@@ -443,7 +443,7 @@ ssm_run "$INSTANCE_ID" "create-env" \
 echo ""
 echo "[4/5] Downloading source code from S3..."
 ssm_run "$INSTANCE_ID" "s3-download" \
-  "sudo -u ubuntu bash -c 'cd /home/ubuntu/shannon && mkdir -p repos && aws s3 cp ${S3_SOURCE} /tmp/source.tar.gz --region ${REGION} && tar xzf /tmp/source.tar.gz -C repos/ && rm -f /tmp/source.tar.gz'"
+  "sudo -u ubuntu bash -c 'cd /home/ubuntu/shannon && mkdir -p repos/${REPO_NAME} && aws s3 cp ${S3_SOURCE} /tmp/source.tar.gz --region ${REGION} && tar xzf /tmp/source.tar.gz -C repos/${REPO_NAME}/ && rm -f /tmp/source.tar.gz'"
 
 # Fix permissions
 echo ""
