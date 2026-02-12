@@ -1,19 +1,21 @@
-# Shannon + AWS Bedrock 실행 가이드
+# Shannon + AWS Bedrock Deployment Guide
 
-> **경고: 이 가이드는 내부 보안 테스트 전용입니다.**
-> 본인이 소유하거나 명시적으로 테스트 허가를 받은 시스템에만 사용하세요.
-> 허가 없이 타인의 시스템에 펜테스트를 수행하는 것은 불법입니다.
+> **[Korean version (한국어 버전)](./SHANNON_BEDROCK_GUIDE_KR.md)**
 
-Shannon AI 펜테스트 프레임워크를 AWS Bedrock으로 동작하도록 설정하고, EC2에서 실행하는 가이드입니다.
+> **Warning: This guide is intended for authorized security testing only.**
+> Only use on systems you own or have explicit permission to test.
+> Unauthorized penetration testing is illegal.
 
-> Shannon 원본: https://github.com/KeygraphHQ/shannon
+This guide covers running the Shannon AI penetration testing framework on AWS Bedrock, deployed on EC2.
 
-> **Shannon Lite는 화이트박스(소스코드 기반) 전용입니다.**
-> Shannon은 타겟 애플리케이션의 소스코드에 접근할 수 있어야 합니다.
-> `repos/<name>/` 디렉토리에 소스코드가 없으면 pre-recon 에이전트가 빈 디렉토리를 분석하다 실패합니다.
-> 블랙박스(소스코드 없이 URL만으로) 테스트는 지원하지 않습니다.
+> Shannon upstream: https://github.com/KeygraphHQ/shannon
 
-## 아키텍처 개요
+> **Shannon Lite is whitebox-only (source code required).**
+> Shannon needs access to the target application's source code.
+> If the `repos/<name>/` directory is empty, the pre-recon agent will fail.
+> Blackbox testing (URL-only, no source) is not supported.
+
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -32,61 +34,61 @@ Shannon AI 펜테스트 프레임워크를 AWS Bedrock으로 동작하도록 설
 └─────────────────────────────────────────────┘
 ```
 
-### 핵심 동작 원리
+### How It Works
 
-EC2에서 Docker Compose로 컨테이너(Temporal + Worker)를 실행합니다.
-Shannon 코드는 Worker 컨테이너 안에서 동작하며, 환경변수 흐름은 다음과 같습니다:
+EC2 runs Docker Compose which starts two containers (Temporal + Worker).
+Shannon code runs inside the Worker container. The environment variable flow is:
 
 ```
-EC2 호스트 (.env) → docker-compose.yml environment → Worker 컨테이너 → spawn된 cli.js
+EC2 host (.env) → docker-compose.yml environment → Worker container → spawned cli.js
 ```
 
-1. Shannon은 `@anthropic-ai/claude-agent-sdk`를 사용
-2. SDK의 `query()` 함수가 번들된 `cli.js`(Claude Code)를 `child_process.spawn()`으로 실행
-3. Shannon의 executor(`claude-executor.ts`)는 SDK에 `env`를 명시적으로 전달하지 않으므로, **Worker 컨테이너의 환경변수가 그대로 CLI 프로세스에 상속**됨
-4. Claude Code(`cli.js`)는 `CLAUDE_CODE_USE_BEDROCK=1` 환경변수를 감지하여 Bedrock 모드로 진입
-5. `cli.js`에 `@aws-sdk/credential-providers`가 이미 번들링되어 있어 별도 패키지 설치 불필요
+1. Shannon uses `@anthropic-ai/claude-agent-sdk`
+2. The SDK's `query()` function spawns the bundled `cli.js` (Claude Code) via `child_process.spawn()`
+3. Shannon's executor (`claude-executor.ts`) does not explicitly pass `env` to the SDK, so **the Worker container's environment variables are inherited by the CLI process as-is**
+4. Claude Code (`cli.js`) detects `CLAUDE_CODE_USE_BEDROCK=1` and enters Bedrock mode
+5. `cli.js` already bundles `@aws-sdk/credential-providers`, so no extra packages are needed
 
-### 프리패치 상태
+### Pre-applied Patches
 
-이 fork에는 Bedrock 지원을 위한 소스 패치가 이미 적용되어 있습니다:
+This repo includes Bedrock support patches already applied:
 
-| 파일 | 패치 내용 |
-|------|-----------|
-| `docker-compose.yml` | worker에서 `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` 삭제. Bedrock/AWS 환경변수 추가 |
-| `shannon` | API 키 검증에 Bedrock 모드 바이패스 추가 |
-| `src/ai/claude-executor.ts` | 하드코딩된 모델명을 `process.env.ANTHROPIC_MODEL \|\| 'claude-sonnet-4-5-20250929'`로 변경 |
+| File | Patch |
+|------|-------|
+| `docker-compose.yml` | Removed `ANTHROPIC_API_KEY`, `ANTHROPIC_BASE_URL`, `ANTHROPIC_AUTH_TOKEN` from worker. Added Bedrock/AWS env vars |
+| `shannon` | Added Bedrock mode bypass for API key validation |
+| `src/ai/claude-executor.ts` | Changed hardcoded model to `process.env.ANTHROPIC_MODEL \|\| 'claude-sonnet-4-5-20250929'` |
 
 ---
 
-## 사전 요구사항
+## Prerequisites
 
-- AWS CLI 설치 및 설정 완료
-- AWS 계정에 Bedrock Claude 모델 접근 권한 활성화 (us-east-1 리전)
-- **타겟 애플리케이션의 소스코드** (S3에 tar.gz로 업로드)
+- AWS CLI installed and configured
+- Bedrock Claude model access enabled in your AWS account (us-east-1 region)
+- **Target application source code** (uploaded to S3 as tar.gz)
 
 ---
 
-## Quick Start: 원클릭 배포 (`deploy-shannon.sh`)
+## Quick Start: One-Click Deployment (`deploy-shannon.sh`)
 
-`deploy-shannon.sh` 스크립트 하나로 IAM Role 생성 → EC2 생성 → Shannon 설치 → 실행까지 모두 자동화합니다.
+`deploy-shannon.sh` automates the entire flow: IAM Role creation → EC2 launch → Shannon setup → execution.
 
-### Step 1: 소스코드 S3 업로드
+### Step 1: Upload Source Code to S3
 
-타겟 애플리케이션의 소스코드를 tar.gz로 묶어 S3에 업로드합니다.
+Package your target application source code and upload it to S3.
 
 ```bash
-# 소스코드를 tar.gz로 묶기
+# Package source code
 cd /path/to/target-source
 tar czf /tmp/vuln-site-src.tar.gz .
 
-# S3에 업로드
+# Upload to S3
 aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --region us-east-1
 ```
 
-> macOS에서 `._` prefix 파일이 포함되는 게 신경 쓰인다면 `COPYFILE_DISABLE=1 tar czf ...` 사용.
+> On macOS, use `COPYFILE_DISABLE=1 tar czf ...` to avoid `._` prefix metadata files.
 
-### Step 2: 배포 실행
+### Step 2: Deploy
 
 ```bash
 ./deploy-shannon.sh \
@@ -95,33 +97,33 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
   --s3-source s3://your-bucket/vuln-site-src.tar.gz
 ```
 
-스크립트가 자동으로 수행하는 작업:
+What the script does automatically:
 
-| Phase | 내용 |
-|-------|------|
-| **Phase 1** | IAM Role 생성 (SSM + Bedrock + S3 권한), EC2 인스턴스 생성, 준비 대기 |
-| **Phase 2** | Docker 설치 대기, git clone, .env 생성, S3에서 소스코드 다운로드, 권한 설정 |
-| **Phase 3** | `./shannon start` 실행, 워크플로우 ID 캡처 |
-| **Phase 4** | 결과 출력 (워크플로우 ID, 모니터링 명령어, 다운로드 명령어) |
+| Phase | Description |
+|-------|-------------|
+| **Phase 1** | Create IAM Role (SSM + Bedrock + S3 permissions), launch EC2 instance, wait for ready |
+| **Phase 2** | Wait for Docker installation, git clone, create .env, download source from S3, set permissions |
+| **Phase 3** | Run `./shannon start`, capture workflow ID |
+| **Phase 4** | Output workflow ID, monitoring commands, download instructions |
 
-#### 전체 파라미터
+#### Parameters
 
-| 파라미터 | 필수 | 기본값 | 설명 |
-|---------|------|--------|------|
-| `--github-repo` | O | - | GitHub 저장소 (예: `Frangke/shannon-bedrock`) |
-| `--github-branch` | X | `main` | clone할 브랜치명 |
-| `--target-url` | O | - | 펜테스트 대상 URL |
-| `--s3-source` | O | - | 타겟 소스코드 S3 경로 (tar.gz) |
-| `--repo-name` | X | S3 파일명에서 추출 | repos/ 하위 폴더명 |
-| `--model` | X | `us.anthropic.claude-sonnet-4-20250514-v1:0` | Bedrock 모델 ID |
-| `--region` | X | `us-east-1` | AWS 리전 |
-| `--instance-type` | X | `t3.large` | EC2 인스턴스 타입 |
-| `--instance-id` | X | - | 기존 EC2 재사용 시 인스턴스 ID (Phase 1 스킵) |
-| `--teardown` | X | - | 리소스 정리 모드 |
+| Parameter | Required | Default | Description |
+|-----------|----------|---------|-------------|
+| `--github-repo` | Yes | - | GitHub repository (e.g. `Frangke/shannon-bedrock`) |
+| `--github-branch` | No | `main` | Branch to clone |
+| `--target-url` | Yes | - | Pentest target URL |
+| `--s3-source` | Yes | - | Target source code S3 path (tar.gz) |
+| `--repo-name` | No | Extracted from S3 filename | Folder name under repos/ |
+| `--model` | No | `us.anthropic.claude-sonnet-4-20250514-v1:0` | Bedrock model ID |
+| `--region` | No | `us-east-1` | AWS region |
+| `--instance-type` | No | `t3.large` | EC2 instance type |
+| `--instance-id` | No | - | Reuse existing EC2 (skips Phase 1) |
+| `--teardown` | No | - | Teardown mode |
 
-#### 기존 인스턴스 재사용
+#### Reusing an Existing Instance
 
-이미 생성된 EC2가 있으면 `--instance-id`로 Phase 1을 건너뛸 수 있습니다.
+If you already have an EC2 instance, use `--instance-id` to skip Phase 1:
 
 ```bash
 ./deploy-shannon.sh \
@@ -131,62 +133,61 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
   --instance-id i-0abc123def456
 ```
 
-### Step 3: 모니터링
+### Step 3: Monitor
 
-배포 완료 시 출력되는 명령어로 모니터링합니다.
+Use the commands printed at deployment completion:
 
 ```bash
-# SSM으로 EC2 접속
+# Connect via SSM
 aws ssm start-session --target <instance-id> --region us-east-1
 
-# ubuntu 유저로 전환
+# Switch to ubuntu user
 sudo su - ubuntu
 cd ~/shannon
 
-# 로그 확인
+# View logs
 ./shannon logs ID=<workflow-id>
 ./shannon query ID=<workflow-id>
 
-# Temporal Web UI (포트 포워딩)
+# Temporal Web UI (port forwarding)
 aws ssm start-session --target <instance-id> --region us-east-1 \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
-# 브라우저에서 http://localhost:8233 접속
+# Open http://localhost:8233 in your browser
 ```
 
-### Step 4: 결과 다운로드
+### Step 4: Download Results
 
-Shannon은 결과물을 `repos/<name>/deliverables/`에 저장합니다.
+Shannon saves results to `repos/<name>/deliverables/`.
 
 ```bash
-# EC2 내부에서 (SSM 세션)
+# Inside EC2 (SSM session)
 sudo su - ubuntu && cd ~/shannon
 tar czf /tmp/shannon-results.tar.gz audit-logs/ repos/*/deliverables/
 aws s3 cp /tmp/shannon-results.tar.gz s3://your-bucket/shannon-results.tar.gz
 
-# 로컬에서
+# From local machine
 aws s3 cp s3://your-bucket/shannon-results.tar.gz ./shannon-results.tar.gz
 tar xzf shannon-results.tar.gz
 ```
 
-### Step 5: 정리 (Teardown)
+### Step 5: Teardown
 
 ```bash
 ./deploy-shannon.sh --teardown --instance-id <instance-id> --region us-east-1
 ```
 
-EC2 인스턴스 종료 + IAM Role/Instance Profile 삭제를 자동으로 수행합니다.
+Terminates the EC2 instance and deletes the IAM Role/Instance Profile.
 
 ---
 
-## 수동 배포 (참고용)
+## Manual Deployment (Reference)
 
-자동 배포 스크립트를 사용하지 않고 직접 단계별로 실행하는 방법입니다.
+Step-by-step instructions without the automated script.
 
-### 1. IAM Role 생성 (SSM + Bedrock)
+### 1. Create IAM Role (SSM + Bedrock)
 
 ```bash
-# Trust Policy 파일 생성
 cat > /tmp/ec2-trust.json << 'EOF'
 {
   "Version": "2012-10-17",
@@ -200,18 +201,15 @@ cat > /tmp/ec2-trust.json << 'EOF'
 }
 EOF
 
-# IAM Role 생성
 aws iam create-role \
   --role-name shannon-ec2-bedrock-role \
   --assume-role-policy-document file:///tmp/ec2-trust.json \
   --no-cli-pager
 
-# SSM 관리 정책 연결
 aws iam attach-role-policy \
   --role-name shannon-ec2-bedrock-role \
   --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
-# Bedrock 인라인 정책 추가
 aws iam put-role-policy \
   --role-name shannon-ec2-bedrock-role \
   --policy-name bedrock-invoke \
@@ -229,18 +227,17 @@ aws iam put-role-policy \
     ]
   }'
 
-# Instance Profile 생성 및 Role 연결
 aws iam create-instance-profile \
   --instance-profile-name shannon-ec2-bedrock-profile
 aws iam add-role-to-instance-profile \
   --instance-profile-name shannon-ec2-bedrock-profile \
   --role-name shannon-ec2-bedrock-role
 
-echo "IAM 전파 대기 (15초)..."
+echo "Waiting for IAM propagation (15s)..."
 sleep 15
 ```
 
-### 2. EC2 인스턴스 생성
+### 2. Launch EC2 Instance
 
 ```bash
 UBUNTU_AMI=$(aws ec2 describe-images \
@@ -273,26 +270,26 @@ usermod -aG docker ubuntu
 ' \
   --query 'Instances[0].InstanceId' --output text)
 
-echo "인스턴스 ID: $INSTANCE_ID"
+echo "Instance ID: $INSTANCE_ID"
 aws ec2 wait instance-status-ok --instance-ids $INSTANCE_ID --region us-east-1
 ```
 
-### 3. EC2 접속 및 Shannon 설정
+### 3. Connect and Configure Shannon
 
 ```bash
 aws ssm start-session --target $INSTANCE_ID --region us-east-1
 ```
 
-접속 후:
+After connecting:
 
 ```bash
 sudo su - ubuntu
 
-# Shannon 클론
+# Clone Shannon
 git clone https://github.com/Frangke/shannon-bedrock.git ~/shannon
 cd ~/shannon
 
-# .env 생성 (IMDSv2에서 자격증명 가져오기)
+# Create .env (fetch credentials from IMDSv2)
 TOKEN=$(curl -s -X PUT "http://169.254.169.254/latest/api/token" \
   -H "X-aws-ec2-metadata-token-ttl-seconds: 21600")
 ROLE_NAME=$(curl -s -H "X-aws-ec2-metadata-token: $TOKEN" \
@@ -315,31 +312,29 @@ AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
 EOF
 ```
 
-> `.env`에 `ANTHROPIC_API_KEY`를 **절대 넣지 마세요.**
-> IMDS 임시 자격증명은 만료됩니다. 인증 오류 발생 시 위 명령어를 다시 실행하여 `.env`를 갱신하세요.
+> **Never** add `ANTHROPIC_API_KEY` to `.env`.
+> IMDS temporary credentials expire. If you get auth errors, re-run the above commands to refresh `.env`.
 
-### 4. 소스코드 배치 및 실행
+### 4. Deploy Source Code and Run
 
 ```bash
-# S3에서 소스코드 다운로드
+# Download source from S3
 mkdir -p repos/vuln-site
 aws s3 cp s3://your-bucket/vuln-site-src.tar.gz /tmp/
 tar xzf /tmp/vuln-site-src.tar.gz -C repos/vuln-site/
 
-# 권한 설정 (필수!)
+# Set permissions (required!)
 chmod -R 777 repos/vuln-site/
 
-# 실행
+# Run
 ./shannon start URL=https://target-site.com REPO=vuln-site
 ```
 
-### 5. 정리
+### 5. Cleanup
 
 ```bash
-# EC2 종료
 aws ec2 terminate-instances --instance-ids $INSTANCE_ID --region us-east-1
 
-# IAM 리소스 정리
 aws iam remove-role-from-instance-profile \
   --instance-profile-name shannon-ec2-bedrock-profile \
   --role-name shannon-ec2-bedrock-role
@@ -357,126 +352,126 @@ aws iam delete-role \
 
 ---
 
-## Deliverables 확인
+## Deliverables
 
-### 파일 위치
+### File Location
 
-> Shannon은 결과물을 `repos/<name>/deliverables/`에 저장합니다.
-> `audit-logs/` 폴더에는 세션 메타데이터, 에이전트 로그, 프롬프트 스냅샷만 저장됩니다.
+> Shannon saves results to `repos/<name>/deliverables/`.
+> The `audit-logs/` folder only contains session metadata, agent logs, and prompt snapshots.
 
 ```bash
 ls ~/shannon/repos/vuln-site/deliverables/
 ```
 
-### 생성되는 파일
+### Generated Files
 
-| 파일 | 내용 | 생성 에이전트 |
-|------|------|---------------|
-| `comprehensive_security_assessment_report.md` | **최종 종합 보안 평가 리포트** | report |
-| `code_analysis_deliverable.md` | 소스코드 정적 분석 결과 | pre-recon |
-| `recon_deliverable.md` | 정찰 (엔드포인트, 인프라) 결과 | recon |
-| `injection_analysis_deliverable.md` | SQL/Command Injection 분석 | injection-vuln |
-| `injection_exploitation_evidence.md` | Injection 공격 증거 (PoC 포함) | injection-exploit |
-| `xss_analysis_deliverable.md` | XSS 취약점 분석 | xss-vuln |
-| `xss_exploitation_evidence.md` | XSS 공격 증거 (PoC 포함) | xss-exploit |
-| `auth_analysis_deliverable.md` | 인증 취약점 분석 | auth-vuln |
-| `auth_exploitation_evidence.md` | 인증 공격 증거 (PoC 포함) | auth-exploit |
-| `authz_analysis_deliverable.md` | 인가 취약점 분석 | authz-vuln |
-| `authz_exploitation_evidence.md` | 인가 공격 증거 (PoC 포함) | authz-exploit |
-| `ssrf_analysis_deliverable.md` | SSRF 분석 | ssrf-vuln |
+| File | Description | Agent |
+|------|-------------|-------|
+| `comprehensive_security_assessment_report.md` | **Final security assessment report** | report |
+| `code_analysis_deliverable.md` | Static source code analysis | pre-recon |
+| `recon_deliverable.md` | Reconnaissance (endpoints, infra) | recon |
+| `injection_analysis_deliverable.md` | SQL/Command injection analysis | injection-vuln |
+| `injection_exploitation_evidence.md` | Injection exploit evidence (with PoC) | injection-exploit |
+| `xss_analysis_deliverable.md` | XSS vulnerability analysis | xss-vuln |
+| `xss_exploitation_evidence.md` | XSS exploit evidence (with PoC) | xss-exploit |
+| `auth_analysis_deliverable.md` | Authentication vulnerability analysis | auth-vuln |
+| `auth_exploitation_evidence.md` | Auth exploit evidence (with PoC) | auth-exploit |
+| `authz_analysis_deliverable.md` | Authorization vulnerability analysis | authz-vuln |
+| `authz_exploitation_evidence.md` | Authorization exploit evidence (with PoC) | authz-exploit |
+| `ssrf_analysis_deliverable.md` | SSRF analysis | ssrf-vuln |
 
-> 취약점 미발견 시 해당 exploit 에이전트는 자동 스킵됩니다.
+> Exploit agents are automatically skipped if no vulnerabilities are found.
 
-### 실행 비용 참고
+### Cost Reference
 
-| 모델 | 예상 소요시간 | 예상 비용 |
-|------|---------------|-----------|
-| Claude Sonnet 4 (us.anthropic) | ~1.5시간 | ~$23 |
-| Claude Sonnet 4.5 | ~1.5시간 | ~$50 |
+| Model | Estimated Duration | Estimated Cost |
+|-------|-------------------|----------------|
+| Claude Sonnet 4 (us.anthropic) | ~1.5 hours | ~$23 |
+| Claude Sonnet 4.5 | ~1.5 hours | ~$50 |
 
-> 비용은 타겟 애플리케이션의 복잡도에 따라 달라집니다.
+> Costs vary depending on target application complexity.
 
 ---
 
-## `ANTHROPIC_MODEL` 설정 가이드
+## `ANTHROPIC_MODEL` Reference
 
-| 환경변수 값 | 설명 |
-|-------------|------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (추천, CRIS 불필요) |
-| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (CRIS 불필요) |
-| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (CRIS 활성화 필요) |
+| Value | Description |
+|-------|-------------|
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (recommended, no CRIS needed) |
+| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (no CRIS needed) |
+| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (requires CRIS activation) |
 | `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 |
 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 |
 
-> `us.` prefix는 단일 리전 호출이므로 별도 설정 없이 사용 가능합니다.
-> `global.` prefix는 AWS 콘솔에서 Cross-Region Inference(CRIS)를 활성화해야 합니다.
+> `us.` prefix routes to a single region and works without additional setup.
+> `global.` prefix requires Cross-Region Inference (CRIS) to be enabled in the AWS console.
 
 ---
 
-## 기술 레퍼런스
+## Technical Reference
 
-### cli.js 내부 모델 선택 흐름
+### cli.js Model Selection Flow
 
 ```
-모델 선택 (sl → jE 함수):
-├─ A71(): query()의 model 파라미터 확인 → 있으면 그대로 사용 (최우선)
-├─ process.env.ANTHROPIC_MODEL 확인 → 있으면 사용
-└─ 없으면 → 기본 매핑 사용:
+Model selection (sl → jE function):
+├─ A71(): check query()'s model parameter → use if present (highest priority)
+├─ process.env.ANTHROPIC_MODEL → use if set
+└─ fallback → default mapping:
     ├─ bedrock provider: dZ0.bedrock = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    └─ global. prefix → Cross-Region Inference(CRIS) 필요
+    └─ global. prefix → requires Cross-Region Inference (CRIS)
 ```
 
-> `claude-executor.ts`가 `process.env.ANTHROPIC_MODEL`을 `query({ model: ... })`로 전달하므로, `.env`의 `ANTHROPIC_MODEL` 값이 최우선으로 적용됩니다.
+> `claude-executor.ts` passes `process.env.ANTHROPIC_MODEL` to `query({ model: ... })`, so the `.env` value takes highest priority.
 
-### cli.js 내부 Bedrock 인증 흐름
+### cli.js Bedrock Authentication Flow
 
 ```
-J$ 함수 (클라이언트 생성):
-├─ CLAUDE_CODE_USE_BEDROCK=1 확인
-├─ oA1() 호출 → Docker에선 settings 없음 → null
-├─ fallback: new AnthropicBedrock(F) 생성
-│   └─ 요청 시 fromNodeProviderChain() (번들 내장)
-│       └─ fromEnv() → process.env.AWS_ACCESS_KEY_ID 읽음
-└─ SigV4 서명 후 Bedrock API 호출
+J$ function (client creation):
+├─ check CLAUDE_CODE_USE_BEDROCK=1
+├─ call oA1() → no settings in Docker → null
+├─ fallback: create new AnthropicBedrock(F)
+│   └─ on request: fromNodeProviderChain() (bundled)
+│       └─ fromEnv() → reads process.env.AWS_ACCESS_KEY_ID
+└─ SigV4 sign → Bedrock API call
 ```
 
-### 환경변수 주의사항
+### Environment Variable Warnings
 
-| 환경변수 | 주의 |
-|----------|------|
-| `ANTHROPIC_API_KEY` | **절대 설정하지 마세요.** 빈 문자열(`""`)이라도 존재하면 `cli.js`가 Bedrock 대신 Anthropic API로 요청합니다. |
-| `ANTHROPIC_AUTH_TOKEN` | **worker에 설정하지 마세요.** SigV4 서명과 충돌할 수 있습니다. |
-| `ANTHROPIC_BASE_URL` | **worker에 설정하지 마세요.** 설정되면 Bedrock endpoint 대신 해당 URL로 요청합니다. |
+| Variable | Warning |
+|----------|---------|
+| `ANTHROPIC_API_KEY` | **Never set this.** Even an empty string (`""`) causes `cli.js` to use the Anthropic API instead of Bedrock. |
+| `ANTHROPIC_AUTH_TOKEN` | **Do not set in worker.** Conflicts with SigV4 signing. |
+| `ANTHROPIC_BASE_URL` | **Do not set in worker.** Overrides the Bedrock endpoint. |
 
-> 이 fork의 `docker-compose.yml`에서는 위 3개 환경변수가 worker 섹션에서 이미 제거되어 있습니다.
-> router 서비스의 `ANTHROPIC_API_KEY`는 별도 서비스이므로 그대로 유지됩니다.
+> These three variables have already been removed from the worker section in this repo's `docker-compose.yml`.
+> The router service's `ANTHROPIC_API_KEY` is kept since it's a separate service.
 
 ---
 
-## 트러블슈팅
+## Troubleshooting
 
 ### 403 Authorization header requires 'Credential' parameter
 
-Bedrock API에 SigV4 서명 없이 요청이 도달했다는 의미입니다.
+A request reached the Bedrock API without SigV4 signing.
 
-**확인 순서:**
+**Check in order:**
 
-1. **컨테이너에 `ANTHROPIC_API_KEY`가 존재하는지 확인**
+1. **Verify `ANTHROPIC_API_KEY` is not set in the container**
    ```bash
    docker compose exec worker node -e "console.log('ANTHROPIC_API_KEY:', JSON.stringify(process.env.ANTHROPIC_API_KEY))"
    ```
-   `undefined`여야 합니다. `""` (빈 문자열)이라도 문제입니다.
+   Must be `undefined`. Even `""` (empty string) causes issues.
 
-2. **컨테이너에 `ANTHROPIC_AUTH_TOKEN`, `ANTHROPIC_BASE_URL`이 존재하는지 확인**
+2. **Verify `ANTHROPIC_AUTH_TOKEN` and `ANTHROPIC_BASE_URL` are not set**
    ```bash
    docker compose exec worker node -e "
      console.log('AUTH_TOKEN:', JSON.stringify(process.env.ANTHROPIC_AUTH_TOKEN));
      console.log('BASE_URL:', JSON.stringify(process.env.ANTHROPIC_BASE_URL));
    "
    ```
-   둘 다 `undefined`여야 합니다.
+   Both must be `undefined`.
 
-3. **AWS 자격증명이 컨테이너에 전달되는지 확인**
+3. **Verify AWS credentials are passed to the container**
    ```bash
    docker compose exec worker node -e "
      console.log('AWS_ACCESS_KEY_ID:', process.env.AWS_ACCESS_KEY_ID?.substring(0,8));
@@ -489,31 +484,31 @@ Bedrock API에 SigV4 서명 없이 요청이 도달했다는 의미입니다.
 
 ### 400 The provided model identifier is invalid
 
-`cli.js`가 잘못된 모델 ID로 Bedrock API를 호출하고 있습니다.
+`cli.js` is calling the Bedrock API with an invalid model ID.
 
-**원인:** `ANTHROPIC_MODEL`이 설정되지 않으면 기본값으로 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`이 사용되며, CRIS가 활성화되지 않으면 에러가 발생합니다.
+**Cause:** If `ANTHROPIC_MODEL` is not set, the default `global.anthropic.claude-sonnet-4-5-20250929-v1:0` is used. This requires CRIS to be enabled.
 
-**해결:**
-1. `.env`에 `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0` 설정 확인
-2. `docker-compose.yml`에 `ANTHROPIC_MODEL` 환경변수가 worker에 전달되는지 확인
-3. 패치 후 `REBUILD=true`로 재시작 (TypeScript 재빌드 필요)
+**Fix:**
+1. Verify `.env` has `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0`
+2. Verify `docker-compose.yml` passes `ANTHROPIC_MODEL` to the worker
+3. Restart with `REBUILD=true` after changes (TypeScript rebuild needed)
 
 ```bash
 docker compose exec worker env | grep ANTHROPIC_MODEL
 ```
 
-### 기타 문제
+### Common Issues
 
-| 문제 | 해결 |
-|------|------|
-| `Activity task failed` (pre-recon) | **소스코드가 `repos/<name>/`에 있는지 확인.** Shannon은 화이트박스 전용이므로 빈 디렉토리면 실패합니다 |
-| `docker: permission denied` | `newgrp docker` 또는 재접속 |
+| Problem | Solution |
+|---------|----------|
+| `Activity task failed` (pre-recon) | **Verify source code exists in `repos/<name>/`.** Shannon is whitebox-only; empty directories cause failures |
+| `docker: permission denied` | `newgrp docker` or reconnect |
 | `Cannot connect to Docker daemon` | `sudo systemctl start docker` |
-| `ERROR: Set ANTHROPIC_API_KEY` | `.env`에 `CLAUDE_CODE_USE_BEDROCK=1`이 설정되어 있는지 확인 |
+| `ERROR: Set ANTHROPIC_API_KEY` | Verify `CLAUDE_CODE_USE_BEDROCK=1` is set in `.env` |
 | `Repository not found at ./repos/...` | `mkdir -p repos/<name>` |
-| `AccessDeniedException` | IAM Role에 `bedrock:InvokeModel` 권한 확인 |
-| 모델 접근 불가 | AWS 콘솔 > Bedrock > Model access에서 Claude 모델 활성화 |
-| 인증 실패 (실행 중 갑자기) | `.env`의 임시 자격증명 만료. IMDS에서 재발급 후 재시작 |
-| 빌드 중 갑자기 리부팅 | Ubuntu 자동 보안 업데이트. user-data에 `Automatic-Reboot "false"` 설정 확인 |
-| Docker build `permission denied` (audit-logs) | `sudo chown -R ubuntu:docker audit-logs && sudo chmod -R 755 audit-logs` 후 재시작 |
-| `Validation failed: Missing required deliverable files` | `chmod -R 777 repos/<name>/` 후 재시작 |
+| `AccessDeniedException` | Verify IAM Role has `bedrock:InvokeModel` permission |
+| Model access denied | Enable Claude models in AWS Console > Bedrock > Model access |
+| Auth failure (mid-run) | IMDS temporary credentials expired. Re-fetch and restart |
+| Unexpected reboot during build | Ubuntu auto security updates. Check user-data has `Automatic-Reboot "false"` |
+| Docker build `permission denied` (audit-logs) | `sudo chown -R ubuntu:docker audit-logs && sudo chmod -R 755 audit-logs` then restart |
+| `Validation failed: Missing required deliverable files` | `chmod -R 777 repos/<name>/` then restart |
