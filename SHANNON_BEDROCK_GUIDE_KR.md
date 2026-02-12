@@ -486,6 +486,98 @@ J$ 함수 (클라이언트 생성):
 
 ---
 
+## deploy-shannon.sh 알려진 이슈 및 수정 사항
+
+이 저장소의 `deploy-shannon.sh` 스크립트에는 다음 이슈들이 수정되었습니다 (2026-02-12 기준):
+
+### 1. SSM Parameters JSON 포맷팅 오류
+
+**증상:**
+```
+Error parsing parameter '--parameters': Expected: ',', received: '''
+```
+
+**원인:** SSM `send-command`의 `--parameters` 옵션이 JSON 형식을 기대하지만, Bash 배열을 단순 문자열로 전달하여 발생
+
+**수정 사항 (커밋 41728c6):**
+- `ssm_run()` 함수에서 commands 배열을 올바른 JSON 형식으로 변환
+- 따옴표와 백슬래시를 이스케이프 처리
+- 변경 전: `--parameters "commands=${commands[*]}"`
+- 변경 후: `--parameters "{\"commands\":${commands_json}}"`
+
+### 2. Heredoc JSON 이스케이프 오류
+
+**증상:**
+```
+Error parsing parameter '--parameters': Invalid JSON: Invalid control character at: line 1 column 86
+```
+
+**원인:** `.env` 파일 생성 시 heredoc을 사용했으나, JSON 문자열에서 개행 문자가 제대로 이스케이프되지 않음
+
+**수정 사항 (커밋 66e39bc):**
+- heredoc 대신 `printf`를 사용하여 .env 파일 생성
+- 개행 문자를 `\n`으로 명시적으로 포함
+- 변경 전: `cat > .env << ENVEOF ... ENVEOF`
+- 변경 후: `printf "CLAUDE_CODE_USE_BEDROCK=1\n..." > .env`
+
+### 3. AWS CLI 미설치
+
+**증상:**
+```
+bash: line 1: aws: command not found
+failed to run commands: exit status 127
+```
+
+**원인:** Ubuntu 24.04 AMI에 AWS CLI가 기본적으로 설치되지 않음. S3에서 소스코드 다운로드 단계에서 실패
+
+**수정 사항 (커밋 9fc01f0):**
+- user-data 스크립트에 AWS CLI v2 설치 추가
+- 공식 AWS CLI 설치 프로그램 사용
+```bash
+apt-get install -y unzip
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+```
+
+### 4. tar 추출 경로 오류
+
+**증상:**
+```
+chmod: cannot access '/home/ubuntu/shannon/repos/benchmark-site/': No such file or directory
+failed to run commands: exit status 1
+```
+
+**원인:** S3의 tar.gz 파일이 최상위에 파일들을 포함하고 있어, `repos/` 디렉토리에 직접 풀면 `repos/index.html` 형태로 생성됨. 하지만 스크립트는 `repos/benchmark-site/` 디렉토리를 기대함
+
+**수정 사항 (커밋 6553618):**
+- tar 추출 전에 `repos/${REPO_NAME}/` 디렉토리를 먼저 생성
+- 해당 디렉토리 안으로 tar 파일 추출
+- 변경 전: `tar xzf /tmp/source.tar.gz -C repos/`
+- 변경 후: `mkdir -p repos/${REPO_NAME} && tar xzf /tmp/source.tar.gz -C repos/${REPO_NAME}/`
+
+### 검증
+
+위 4가지 수정 사항이 모두 적용된 버전으로 성공적인 배포 확인:
+
+```bash
+=== Phase 1: AWS Infrastructure ===
+✓ IAM Role 생성
+✓ EC2 Instance 생성 (Ubuntu 24.04)
+
+=== Phase 2: Shannon Setup ===
+✓ Docker 설치 완료
+✓ Shannon 리포지토리 클론
+✓ .env 파일 생성 (Bedrock 설정)
+✓ S3 소스코드 다운로드
+✓ 권한 설정
+
+=== Phase 3: Starting Shannon ===
+✓ Temporal 워크플로우 시작
+```
+
+---
+
 ## 트러블슈팅
 
 ### 403 Authorization header requires 'Credential' parameter
