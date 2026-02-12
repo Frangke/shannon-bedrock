@@ -96,13 +96,27 @@ ssm_run() {
   shift 2
   local commands=("$@")
 
+  # Build JSON array for commands
+  local commands_json="["
+  local first=true
+  for cmd in "${commands[@]}"; do
+    if [ "$first" = false ]; then
+      commands_json="${commands_json},"
+    fi
+    first=false
+    # Escape quotes and backslashes in the command
+    local escaped_cmd=$(printf '%s' "$cmd" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+    commands_json="${commands_json}\"${escaped_cmd}\""
+  done
+  commands_json="${commands_json}]"
+
   local cmd_id
   cmd_id=$(aws ssm send-command \
     --region "$REGION" \
     --instance-ids "$instance_id" \
     --document-name "AWS-RunShellScript" \
     --comment "$comment" \
-    --parameters "commands=${commands[*]}" \
+    --parameters "{\"commands\":${commands_json}}" \
     --output text \
     --query 'Command.CommandId')
 
