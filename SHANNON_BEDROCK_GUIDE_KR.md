@@ -69,13 +69,29 @@ EC2 호스트 (.env) → docker-compose.yml environment → Worker 컨테이너 
 
 ## 사전 요구사항
 
-- AWS CLI 설치 및 설정 완료
+- **로컬 머신** (macOS, Linux, 또는 Windows with WSL)
+- AWS CLI 설치 및 적절한 자격 증명으로 설정 완료
 - AWS 계정에 Bedrock Claude 모델 접근 권한 활성화 (us-east-1 리전)
-- **타겟 애플리케이션의 소스코드** (S3에 tar.gz로 업로드)
+- **타겟 애플리케이션의 소스코드** (S3에 tar.gz로 업로드 예정)
 
 ---
 
 ## Quick Start: 원클릭 배포 (`deploy-shannon.sh`)
+
+### Step 0: 저장소 클론 (로컬 머신에서)
+
+`deploy-shannon.sh` 스크립트는 이 저장소에 포함되어 있으며, **로컬 머신**에서 실행해야 합니다 (EC2가 아님).
+
+```bash
+# Shannon 저장소를 로컬 머신에 클론
+git clone https://github.com/Frangke/shannon-bedrock.git
+cd shannon-bedrock
+
+# 배포 스크립트가 존재하는지 확인
+ls -l deploy-shannon.sh
+```
+
+### 동작 방식
 
 `deploy-shannon.sh` 스크립트 하나로 IAM Role 생성 → EC2 생성 → Shannon 설치 → 실행까지 모두 자동화합니다.
 

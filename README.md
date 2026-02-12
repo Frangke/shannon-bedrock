@@ -69,13 +69,29 @@ This repo includes Bedrock support patches already applied:
 
 ## Prerequisites
 
-- AWS CLI installed and configured
+- **Local machine** (macOS, Linux, or Windows with WSL) with AWS CLI installed and configured
+- AWS CLI installed and configured with appropriate credentials
 - Bedrock Claude model access enabled in your AWS account (us-east-1 region)
-- **Target application source code** (uploaded to S3 as tar.gz)
+- **Target application source code** (to be uploaded to S3 as tar.gz)
 
 ---
 
 ## Quick Start: One-Click Deployment (`deploy-shannon.sh`)
+
+### Step 0: Clone This Repository (on your local machine)
+
+The `deploy-shannon.sh` script is included in this repository and must be run from your **local machine** (not from EC2).
+
+```bash
+# Clone the Shannon repository to your local machine
+git clone https://github.com/Frangke/shannon-bedrock.git
+cd shannon-bedrock
+
+# Verify the deployment script exists
+ls -l deploy-shannon.sh
+```
+
+### How It Works
 
 `deploy-shannon.sh` automates the entire flow: IAM Role creation → EC2 launch → Shannon setup → execution.
 
