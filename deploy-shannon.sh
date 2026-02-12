@@ -104,8 +104,13 @@ ssm_run() {
       commands_json="${commands_json},"
     fi
     first=false
-    # Escape quotes and backslashes in the command
-    local escaped_cmd=$(printf '%s' "$cmd" | sed 's/\\/\\\\/g' | sed 's/"/\\"/g')
+    # Escape special characters for JSON: backslashes, quotes, newlines, tabs, etc.
+    local escaped_cmd=$(printf '%s' "$cmd" | \
+      sed 's/\\/\\\\/g' | \
+      sed 's/"/\\"/g' | \
+      sed ':a;N;$!ba;s/\n/\\n/g' | \
+      sed 's/\t/\\t/g' | \
+      sed 's/\r/\\r/g')
     commands_json="${commands_json}\"${escaped_cmd}\""
   done
   commands_json="${commands_json}]"
@@ -426,13 +431,7 @@ ssm_run "$INSTANCE_ID" "git-clone" \
 echo ""
 echo "[3/5] Creating .env (Bedrock configuration)..."
 ssm_run "$INSTANCE_ID" "create-env" \
-  "sudo -u ubuntu bash -c 'cd /home/ubuntu/shannon && cat > .env << ENVEOF
-CLAUDE_CODE_USE_BEDROCK=1
-CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
-AWS_REGION=${REGION}
-ANTHROPIC_MODEL=${MODEL}
-ENVEOF
-'"
+  "sudo -u ubuntu bash -c 'cd /home/ubuntu/shannon && printf \"CLAUDE_CODE_USE_BEDROCK=1\nCLAUDE_CODE_MAX_OUTPUT_TOKENS=64000\nAWS_REGION=${REGION}\nANTHROPIC_MODEL=${MODEL}\n\" > .env'"
 
 # Download source code from S3
 echo ""
