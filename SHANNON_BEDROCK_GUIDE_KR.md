@@ -19,12 +19,12 @@ Shannon AI 펜테스트 프레임워크를 AWS Bedrock으로 동작하도록 설
 
 ```mermaid
 graph TB
-    subgraph EC2["EC2 인스턴스 (Ubuntu, t3.large, IAM Role)"]
-        subgraph Docker["Docker Compose"]
+    subgraph EC2[EC2: Ubuntu t3.large with IAM Role]
+        subgraph Docker[Docker Compose]
             Temporal[Temporal Server]
-            Worker["Shannon Worker<br/>(claude-agent-sdk = Claude Code)"]
-            Worker -->|통신| Temporal
-            Worker -->|API 호출| Bedrock[AWS Bedrock API]
+            Worker[Shannon Worker<br/>claude-agent-sdk]
+            Worker -->|워크플로우 오케스트레이션| Temporal
+            Worker -->|API 호출| Bedrock[AWS Bedrock]
         end
     end
 
