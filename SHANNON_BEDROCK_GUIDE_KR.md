@@ -158,28 +158,169 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
   --instance-id i-0abc123def456
 ```
 
+---
+
+## 예상 소요 시간
+
+전체 배포 및 펜테스트 완료까지 **약 1.5~2시간** 소요됩니다.
+
+| 단계 | 소요 시간 | 설명 |
+|------|-----------|------|
+| **Phase 1: AWS Infrastructure** | 2~3분 | IAM Role 생성, EC2 인스턴스 생성, 인스턴스 상태 체크 |
+| **Phase 2: Shannon Setup** | 2~3분 | Docker/AWS CLI 설치 완료 대기, Git clone, S3 다운로드 |
+| **Phase 3: Docker Build** | 5~10분 | 첫 실행 시 Temporal + Worker 이미지 빌드 (이후 캐시 사용) |
+| **Phase 4: Pre-Reconnaissance** | 10~15분 | 외부 도구 스캔 (nmap, subfinder, whatweb) + 소스코드 분석 |
+| **Phase 5: Reconnaissance** | 5~10분 | 초기 분석 결과 종합 |
+| **Phase 6: Vulnerability Analysis** | 20~30분 | 5개 병렬 에이전트 (injection, XSS, auth, authz, SSRF) |
+| **Phase 7: Exploitation** | 20~30분 | 취약점 발견 시 실제 PoC 공격 실행 (병렬) |
+| **Phase 8: Reporting** | 10~15분 | 경영진 수준 종합 보고서 생성 |
+
+> **참고:**
+> - 타겟 애플리케이션의 규모와 복잡도에 따라 시간이 달라질 수 있습니다
+> - Phase 6과 7은 취약점 발견 수에 따라 시간이 증가할 수 있습니다
+> - Docker 이미지가 이미 빌드되어 있으면 Phase 3는 1분 이내로 단축됩니다
+
+---
+
+## 예상 비용
+
+### AWS 리소스 비용
+
+| 항목 | 사양 | 시간당 비용 | 예상 비용 (2시간) |
+|------|------|-------------|------------------|
+| **EC2 Instance** | t3.large (us-east-1) | $0.0832/hour | **$0.17** |
+| **EBS Volume** | 30GB gp3 | $0.08/GB-month (~$0.0001/GB-hour) | **$0.006** |
+| **Data Transfer** | S3 → EC2 (무료), 인터넷 송신 (소량) | - | **~$0.01** |
+
+**EC2 총 비용: 약 $0.19 (~₩260)**
+
+### Bedrock API 비용 (Claude Sonnet 4)
+
+> 가격 기준: `us.anthropic.claude-sonnet-4-20250514-v1:0` (us-east-1)
+> - Input: $0.003 / 1K tokens
+> - Output: $0.015 / 1K tokens
+
+**예상 토큰 사용량 (OWASP Juice Shop 기준):**
+
+| Phase | Input Tokens | Output Tokens | 비용 |
+|-------|--------------|---------------|------|
+| Pre-Reconnaissance | ~200K | ~50K | $1.35 |
+| Reconnaissance | ~150K | ~30K | $0.90 |
+| Vulnerability Analysis (5 agents) | ~500K | ~100K | $3.00 |
+| Exploitation (5 agents) | ~400K | ~80K | $2.40 |
+| Reporting | ~300K | ~60K | $1.80 |
+| **총합** | **~1,550K** | **~320K** | **$9.45** |
+
+### 모델별 비용 비교
+
+| 모델 | Input 가격 | Output 가격 | 예상 총 비용 (동일 토큰) | 속도 | 품질 |
+|------|-----------|------------|----------------------|------|------|
+| **Claude Sonnet 4** | $0.003 | $0.015 | **$9.45** | 보통 | 최고 (권장) |
+| Claude Sonnet 4.5 | $0.003 | $0.015 | $9.45 | 빠름 | 최고 |
+| Claude Opus 4 | $0.015 | $0.075 | $47.25 | 느림 | 최고 (복잡한 취약점) |
+| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | 매우 빠름 | 양호 (간단한 앱) |
+
+> **권장 모델 선택:**
+> - **일반 웹앱**: Claude Sonnet 4 (기본값)
+> - **복잡한 엔터프라이즈 앱**: Claude Opus 4 (`--model us.anthropic.claude-opus-4-20250514-v1:0`)
+> - **비용 최적화**: Claude Haiku 4.5 (`--model us.anthropic.claude-haiku-4-5-20251001-v1:0`)
+
+### 총 예상 비용
+
+| 시나리오 | EC2 + EBS | Bedrock | 총 비용 |
+|---------|-----------|---------|---------|
+| **표준 (Sonnet 4)** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
+| 복잡한 앱 (Opus 4) | $0.19 | $47.25 | $47.44 (~₩65,000) |
+| 비용 절감 (Haiku 4.5) | $0.19 | $2.52 | $2.71 (~₩3,700) |
+
+> **참고:**
+> - 위 비용은 OWASP Juice Shop 크기의 웹 애플리케이션 기준입니다
+> - 실제 비용은 타겟 앱의 규모, 취약점 수, 소스코드 양에 따라 달라집니다
+> - EC2를 계속 실행하면 시간당 비용이 추가되므로, 테스트 완료 후 즉시 `--teardown`으로 정리하세요
+
+---
+
 ### Step 3: 모니터링
 
-배포 완료 시 출력되는 명령어로 모니터링합니다.
+#### 방법 1: SSM 세션으로 실시간 로그 확인
 
 ```bash
 # SSM으로 EC2 접속
-aws ssm start-session --target <instance-id> --region us-east-1
+aws ssm start-session --target i-0752374c325ca94cb --region us-east-1
 
 # ubuntu 유저로 전환
 sudo su - ubuntu
 cd ~/shannon
 
-# 로그 확인
-./shannon logs ID=<workflow-id>
+# 실시간 로그 스트리밍 (권장)
+./shannon logs
+
+# 또는 특정 워크플로우 ID로 조회
 ./shannon query ID=<workflow-id>
 
-# Temporal Web UI (포트 포워딩)
-aws ssm start-session --target <instance-id> --region us-east-1 \
+# Docker 컨테이너 로그 직접 확인
+docker compose logs -f worker
+```
+
+**출력 예시:**
+```
+[pre-recon] Starting code analysis and external reconnaissance...
+[pre-recon] Running nmap scan on https://target-site.com...
+[pre-recon] Found 3 open ports: 80, 443, 8080
+[recon] Analyzing attack surface...
+[injection-vuln] Testing SQL injection vulnerabilities...
+```
+
+#### 방법 2: Temporal Web UI (권장)
+
+Temporal Web UI를 통해 시각적으로 워크플로우 진행 상황을 확인할 수 있습니다.
+
+```bash
+# 로컬 머신에서 포트 포워딩 (새 터미널에서 실행)
+aws ssm start-session --target i-0752374c325ca94cb --region us-east-1 \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
-# 브라우저에서 http://localhost:8233 접속
 ```
+
+포트 포워딩이 연결되면 브라우저에서 **http://localhost:8233** 접속
+
+**Temporal UI에서 확인할 수 있는 정보:**
+- 전체 워크플로우 실행 상태 (Running / Completed / Failed)
+- 각 Phase별 진행 상황 및 소요 시간
+- 병렬 실행 중인 에이전트 (5개 vulnerability/exploitation agents)
+- 에이전트별 상세 로그 및 에러 메시지
+- 재시도 히스토리 및 heartbeat 상태
+
+#### 방법 3: audit-logs 디렉토리 확인
+
+```bash
+# EC2 내부에서
+cd ~/shannon/audit-logs
+
+# 세션 폴더 확인
+ls -la
+# 출력: vultest1.vitzzang.com_shannon-1234567890/
+
+# 프롬프트 확인 (재현 가능성)
+cat vultest1.vitzzang.com_shannon-1234567890/prompts/pre-recon.txt
+
+# 에이전트 실행 로그 확인
+cat vultest1.vitzzang.com_shannon-1234567890/agents/pre-recon.log
+
+# 메트릭 확인 (비용 및 타이밍)
+cat vultest1.vitzzang.com_shannon-1234567890/session.json | jq
+```
+
+#### 진행 상황 추정
+
+| Phase | 디렉토리/파일 존재 여부 | 예상 진행률 |
+|-------|----------------------|-----------|
+| `audit-logs/*/prompts/pre-recon.txt` | ✓ | 10% |
+| `repos/*/deliverables/code_analysis_deliverable.md` | ✓ | 25% |
+| `repos/*/deliverables/recon_deliverable.md` | ✓ | 35% |
+| `repos/*/deliverables/injection_analysis_deliverable.md` | ✓ | 50% |
+| `repos/*/deliverables/*_exploitation_evidence.md` | ✓ | 75% |
+| `repos/*/deliverables/comprehensive_security_assessment_report.md` | ✓ | 100% (완료!) |
 
 ### Step 4: 결과 다운로드
 
@@ -189,12 +330,98 @@ Shannon은 결과물을 `repos/<name>/deliverables/`에 저장합니다.
 # EC2 내부에서 (SSM 세션)
 sudo su - ubuntu && cd ~/shannon
 tar czf /tmp/shannon-results.tar.gz audit-logs/ repos/*/deliverables/
-aws s3 cp /tmp/shannon-results.tar.gz s3://your-bucket/shannon-results.tar.gz
+aws s3 cp /tmp/shannon-results.tar.gz s3://claudecode-test/shannon-results.tar.gz
 
-# 로컬에서
-aws s3 cp s3://your-bucket/shannon-results.tar.gz ./shannon-results.tar.gz
+# 로컬 머신에서
+aws s3 cp s3://claudecode-test/shannon-results.tar.gz ./shannon-results.tar.gz
 tar xzf shannon-results.tar.gz
 ```
+
+#### 생성되는 결과물
+
+Shannon은 다음과 같은 보안 리포트를 생성합니다:
+
+##### 1. 메인 보고서 (필독)
+
+| 파일명 | 내용 | 크기 예상 |
+|--------|------|----------|
+| **`comprehensive_security_assessment_report.md`** | 경영진 수준 종합 보안 평가 리포트 | 50-200KB |
+
+**포함 내용:**
+- Executive Summary (경영진 요약)
+- 발견된 취약점 목록 및 CVSS 점수
+- 비즈니스 영향도 평가
+- 우선순위별 수정 권장사항
+- 상세 PoC (Proof-of-Concept) 코드
+
+##### 2. Phase별 상세 리포트
+
+| Phase | 파일명 | 내용 |
+|-------|--------|------|
+| **Pre-Recon** | `code_analysis_deliverable.md` | 소스코드 분석 + nmap/subfinder/whatweb 결과 |
+| **Recon** | `recon_deliverable.md` | 공격 표면 분석 및 엔드포인트 매핑 |
+| **Vuln Analysis** | `injection_analysis_deliverable.md` | SQL Injection, Command Injection 분석 |
+| | `xss_analysis_deliverable.md` | XSS (Reflected/Stored/DOM) 분석 |
+| | `auth_analysis_deliverable.md` | 인증 우회 취약점 분석 |
+| | `authz_analysis_deliverable.md` | 권한 상승 취약점 분석 |
+| | `ssrf_analysis_deliverable.md` | SSRF (Server-Side Request Forgery) 분석 |
+| **Exploitation** | `injection_exploitation_evidence.md` | Injection 공격 PoC 및 증거 |
+| | `xss_exploitation_evidence.md` | XSS 공격 PoC 및 증거 |
+| | `auth_exploitation_evidence.md` | 인증 우회 공격 PoC |
+| | `authz_exploitation_evidence.md` | 권한 상승 공격 PoC |
+| | `ssrf_exploitation_evidence.md` | SSRF 공격 PoC (존재 시) |
+
+##### 3. 감사 로그 (Audit Logs)
+
+```
+audit-logs/
+└── <hostname>_shannon-<timestamp>/
+    ├── session.json              # 전체 세션 메트릭 (비용, 타이밍, 토큰 사용량)
+    ├── prompts/                  # 각 에이전트에 사용된 정확한 프롬프트
+    │   ├── pre-recon.txt
+    │   ├── recon.txt
+    │   ├── injection-vuln.txt
+    │   └── ...
+    └── agents/                   # 에이전트별 실행 로그
+        ├── pre-recon.log
+        ├── injection-vuln.log
+        └── ...
+```
+
+**session.json 예시:**
+```json
+{
+  "hostname": "vultest1.vitzzang.com",
+  "sessionId": "shannon-1707736800",
+  "startTime": "2026-02-12T08:25:00Z",
+  "endTime": "2026-02-12T10:12:34Z",
+  "totalDuration": "1h47m34s",
+  "totalCost": 9.42,
+  "phases": {
+    "pre-recon": {
+      "inputTokens": 198432,
+      "outputTokens": 48921,
+      "cost": 1.33,
+      "duration": "14m23s"
+    },
+    "injection-vuln": {
+      "inputTokens": 102341,
+      "outputTokens": 21432,
+      "cost": 0.63,
+      "duration": "7m12s"
+    }
+  }
+}
+```
+
+##### 4. 결과물 요약
+
+전체 결과물 크기: **10-50MB** (타겟 앱 규모에 따라)
+
+**필수 확인 파일:**
+1. ✅ `comprehensive_security_assessment_report.md` (최우선)
+2. ✅ `session.json` (비용 및 시간 확인)
+3. ✅ `*_exploitation_evidence.md` (실제 공격 PoC)
 
 ### Step 5: 정리 (Teardown)
 
