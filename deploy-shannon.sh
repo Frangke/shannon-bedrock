@@ -341,7 +341,13 @@ sed -i 's/Unattended-Upgrade::Automatic-Reboot "true"/Unattended-Upgrade::Automa
   /etc/apt/apt.conf.d/50unattended-upgrades 2>/dev/null || true
 
 apt-get update
-apt-get install -y ca-certificates curl gnupg git
+apt-get install -y ca-certificates curl gnupg git unzip
+
+# Install AWS CLI v2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+rm -rf /tmp/aws /tmp/awscliv2.zip
 
 # Docker installation
 install -m 0755 -d /etc/apt/keyrings
