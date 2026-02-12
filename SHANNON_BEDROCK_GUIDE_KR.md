@@ -17,21 +17,22 @@ Shannon AI 펜테스트 프레임워크를 AWS Bedrock으로 동작하도록 설
 
 ## 아키텍처 개요
 
-```
-┌─────────────────────────────────────────────┐
-│  EC2 (Ubuntu, t3.large, IAM Role)           │
-│  ┌────────────────────────────────────────┐  │
-│  │  Docker Compose                        │  │
-│  │  ┌──────────┐  ┌───────────────────┐   │  │
-│  │  │ Temporal  │  │ Shannon Worker    │   │  │
-│  │  │ Server   │◄─┤ (claude-agent-sdk │   │  │
-│  │  └──────────┘  │  = Claude Code)   │   │  │
-│  │                │       │           │   │  │
-│  │                │       ▼           │   │  │
-│  │                │  AWS Bedrock API  │   │  │
-│  │                └───────────────────┘   │  │
-│  └────────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph EC2["EC2 인스턴스 (Ubuntu, t3.large, IAM Role)"]
+        subgraph Docker["Docker Compose"]
+            Temporal[Temporal Server]
+            Worker["Shannon Worker<br/>(claude-agent-sdk = Claude Code)"]
+            Worker -->|통신| Temporal
+            Worker -->|API 호출| Bedrock[AWS Bedrock API]
+        end
+    end
+
+    style EC2 fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Docker fill:#e8f4f8,stroke:#0066cc,stroke-width:2px
+    style Temporal fill:#fff,stroke:#666,stroke-width:1px
+    style Worker fill:#fff,stroke:#666,stroke-width:1px
+    style Bedrock fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#fff
 ```
 
 ### 핵심 동작 원리
@@ -405,16 +406,22 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 ## `ANTHROPIC_MODEL` 설정 가이드
 
-| 환경변수 값 | 설명 |
-|-------------|------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (추천, CRIS 불필요) |
-| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (CRIS 불필요) |
-| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (CRIS 활성화 필요) |
-| `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 |
-| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 |
+Shannon 배포에 사용 가능한 Bedrock Claude 모델:
 
-> `us.` prefix는 단일 리전 호출이므로 별도 설정 없이 사용 가능합니다.
-> `global.` prefix는 AWS 콘솔에서 Cross-Region Inference(CRIS)를 활성화해야 합니다.
+| 모델 ID | 모델 | 리전 타입 | 비고 |
+|---------|------|-----------|------|
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Claude Sonnet 4 | 단일 리전 (`us.`) | CRIS 설정 불필요 |
+| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | 단일 리전 (`us.`) | CRIS 설정 불필요 |
+| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | 글로벌 라우팅 | AWS 콘솔에서 CRIS 활성화 필요 |
+| `us.anthropic.claude-opus-4-20250514-v1:0` | Claude Opus 4 | 단일 리전 (`us.`) | 높은 비용, 최고 추론 능력 |
+| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Claude Haiku 4.5 | 단일 리전 (`us.`) | 낮은 비용, 빠르지만 능력 제한적 |
+
+**Prefix 설명:**
+- `us.` prefix: 단일 AWS 리전 라우팅, 별도 설정 없이 사용 가능
+- `global.` prefix: Cross-Region Inference(CRIS) 사용, AWS 콘솔 > Bedrock > Model access에서 활성화 필요
+
+**모델 선택:**
+테스트 목적과 예산에 맞춰 선택하세요. 배포 전에 AWS 계정의 Bedrock 모델 액세스 설정에서 해당 모델이 활성화되어 있는지 확인하세요.
 
 ---
 

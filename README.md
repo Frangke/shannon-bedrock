@@ -17,21 +17,22 @@ This guide covers running the Shannon AI penetration testing framework on AWS Be
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────┐
-│  EC2 (Ubuntu, t3.large, IAM Role)           │
-│  ┌────────────────────────────────────────┐  │
-│  │  Docker Compose                        │  │
-│  │  ┌──────────┐  ┌───────────────────┐   │  │
-│  │  │ Temporal  │  │ Shannon Worker    │   │  │
-│  │  │ Server   │◄─┤ (claude-agent-sdk │   │  │
-│  │  └──────────┘  │  = Claude Code)   │   │  │
-│  │                │       │           │   │  │
-│  │                │       ▼           │   │  │
-│  │                │  AWS Bedrock API  │   │  │
-│  │                └───────────────────┘   │  │
-│  └────────────────────────────────────────┘  │
-└─────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph EC2["EC2 Instance (Ubuntu, t3.large, IAM Role)"]
+        subgraph Docker["Docker Compose"]
+            Temporal[Temporal Server]
+            Worker["Shannon Worker<br/>(claude-agent-sdk = Claude Code)"]
+            Worker -->|communicates| Temporal
+            Worker -->|API calls| Bedrock[AWS Bedrock API]
+        end
+    end
+
+    style EC2 fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style Docker fill:#e8f4f8,stroke:#0066cc,stroke-width:2px
+    style Temporal fill:#fff,stroke:#666,stroke-width:1px
+    style Worker fill:#fff,stroke:#666,stroke-width:1px
+    style Bedrock fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#fff
 ```
 
 ### How It Works
@@ -398,16 +399,22 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 ## `ANTHROPIC_MODEL` Reference
 
-| Value | Description |
-|-------|-------------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (recommended, no CRIS needed) |
-| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (no CRIS needed) |
-| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (requires CRIS activation) |
-| `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 |
-| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 |
+Available Bedrock Claude models for Shannon deployment:
 
-> `us.` prefix routes to a single region and works without additional setup.
-> `global.` prefix requires Cross-Region Inference (CRIS) to be enabled in the AWS console.
+| Model ID | Model | Region Type | Notes |
+|----------|-------|-------------|-------|
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Claude Sonnet 4 | Single region (`us.`) | No CRIS setup required |
+| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | Single region (`us.`) | No CRIS setup required |
+| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | Global routing | Requires CRIS activation in AWS Console |
+| `us.anthropic.claude-opus-4-20250514-v1:0` | Claude Opus 4 | Single region (`us.`) | Higher cost, best reasoning capability |
+| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Claude Haiku 4.5 | Single region (`us.`) | Lower cost, faster but less capable |
+
+**Prefix Explanation:**
+- `us.` prefix: Routes to a single AWS region, works without additional setup
+- `global.` prefix: Uses Cross-Region Inference (CRIS), must be enabled in AWS Console > Bedrock > Model access
+
+**Model Selection:**
+Choose based on your testing needs and budget. Verify the model is enabled in your AWS account's Bedrock model access settings before deployment.
 
 ---
 
