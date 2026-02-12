@@ -18,18 +18,23 @@ This guide covers running the Shannon AI penetration testing framework on AWS Be
 ## Architecture
 
 ```mermaid
-graph TB
+graph LR
     subgraph EC2[EC2: Ubuntu t3.large with IAM Role]
+        CLI[Shannon CLI]
         subgraph Docker[Docker Compose]
             Temporal[Temporal Server]
             Worker[Shannon Worker<br/>claude-agent-sdk]
-            Worker -->|orchestration| Temporal
-            Worker -->|API calls| Bedrock[AWS Bedrock]
         end
+        Bedrock[AWS Bedrock]
     end
+
+    CLI -->|1. Submit workflow| Temporal
+    Temporal -->|2. Orchestrate tasks| Worker
+    Worker -->|3. API calls| Bedrock
 
     style EC2 fill:#f9f9f9,stroke:#333,stroke-width:2px
     style Docker fill:#e8f4f8,stroke:#0066cc,stroke-width:2px
+    style CLI fill:#fff,stroke:#666,stroke-width:1px
     style Temporal fill:#fff,stroke:#666,stroke-width:1px
     style Worker fill:#fff,stroke:#666,stroke-width:1px
     style Bedrock fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#fff

@@ -18,18 +18,23 @@ Shannon AI 펜테스트 프레임워크를 AWS Bedrock으로 동작하도록 설
 ## 아키텍처 개요
 
 ```mermaid
-graph TB
+graph LR
     subgraph EC2[EC2: Ubuntu t3.large with IAM Role]
+        CLI[Shannon CLI]
         subgraph Docker[Docker Compose]
             Temporal[Temporal Server]
             Worker[Shannon Worker<br/>claude-agent-sdk]
-            Worker -->|워크플로우 오케스트레이션| Temporal
-            Worker -->|API 호출| Bedrock[AWS Bedrock]
         end
+        Bedrock[AWS Bedrock]
     end
+
+    CLI -->|1. 워크플로우 제출| Temporal
+    Temporal -->|2. Task 오케스트레이션| Worker
+    Worker -->|3. API 호출| Bedrock
 
     style EC2 fill:#f9f9f9,stroke:#333,stroke-width:2px
     style Docker fill:#e8f4f8,stroke:#0066cc,stroke-width:2px
+    style CLI fill:#fff,stroke:#666,stroke-width:1px
     style Temporal fill:#fff,stroke:#666,stroke-width:1px
     style Worker fill:#fff,stroke:#666,stroke-width:1px
     style Bedrock fill:#ff9900,stroke:#232f3e,stroke-width:2px,color:#fff
