@@ -73,7 +73,10 @@ This repo includes Bedrock support patches already applied:
 
 `deploy-shannon.sh` automates the entire flow: IAM Role creation → EC2 launch → Shannon setup → execution.
 
-### Step 1: Upload Source Code to S3
+### Step 1: Upload Target Application Source Code to S3
+
+**Important:** Shannon framework code is automatically cloned from GitHub during deployment.
+You only need to upload your **target application's source code** (the app you want to test) to S3.
 
 Package your target application source code and upload it to S3.
 
@@ -102,7 +105,7 @@ What the script does automatically:
 | Phase | Description |
 |-------|-------------|
 | **Phase 1** | Create IAM Role (SSM + Bedrock + S3 permissions), launch EC2 instance, wait for ready |
-| **Phase 2** | Wait for Docker installation, git clone, create .env, download source from S3, set permissions |
+| **Phase 2** | Wait for Docker installation, **clone Shannon from GitHub**, create .env, **download target app source from S3**, set permissions |
 | **Phase 3** | Run `./shannon start`, capture workflow ID |
 | **Phase 4** | Output workflow ID, monitoring commands, download instructions |
 

@@ -73,7 +73,10 @@ EC2 호스트 (.env) → docker-compose.yml environment → Worker 컨테이너 
 
 `deploy-shannon.sh` 스크립트 하나로 IAM Role 생성 → EC2 생성 → Shannon 설치 → 실행까지 모두 자동화합니다.
 
-### Step 1: 소스코드 S3 업로드
+### Step 1: 타겟 애플리케이션 소스코드 S3 업로드
+
+**중요:** Shannon 프레임워크 코드는 배포 시 GitHub에서 자동으로 clone됩니다.
+사용자는 **테스트할 대상 애플리케이션의 소스코드만** S3에 업로드하면 됩니다.
 
 타겟 애플리케이션의 소스코드를 tar.gz로 묶어 S3에 업로드합니다.
 
@@ -102,7 +105,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 | Phase | 내용 |
 |-------|------|
 | **Phase 1** | IAM Role 생성 (SSM + Bedrock + S3 권한), EC2 인스턴스 생성, 준비 대기 |
-| **Phase 2** | Docker 설치 대기, git clone, .env 생성, S3에서 소스코드 다운로드, 권한 설정 |
+| **Phase 2** | Docker 설치 대기, **GitHub에서 Shannon clone**, .env 생성, **S3에서 타겟 앱 소스 다운로드**, 권한 설정 |
 | **Phase 3** | `./shannon start` 실행, 워크플로우 ID 캡처 |
 | **Phase 4** | 결과 출력 (워크플로우 ID, 모니터링 명령어, 다운로드 명령어) |
 
