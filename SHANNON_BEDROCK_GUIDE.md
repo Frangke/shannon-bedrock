@@ -177,7 +177,7 @@ Total deployment and pentest completion takes approximately **1.5-2 hours**.
 
 **Estimated Token Usage (OWASP Juice Shop baseline):**
 
-> **Cost Baseline:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Medium-sized Node.js/Express web application (~10,000 LOC) based on actual test execution measurements.
+> **Cost Baseline:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Medium-sized Node.js/Express web application (~10,000 LOC) used as reference for cost estimates. Actual costs may vary significantly based on application complexity.
 
 | Phase | Input Tokens | Output Tokens | Cost |
 |-------|--------------|---------------|------|
@@ -207,8 +207,8 @@ Total deployment and pentest completion takes approximately **1.5-2 hours**.
 | Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
 
 > **Note:**
-> - Costs based on [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) actual measurement results
-> - Actual costs vary by target app size, vulnerability count, and source code volume
+> - Costs based on [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) size estimate
+> - Actual costs may vary **2-3x or more** depending on application complexity, vulnerability count, and source code volume
 > - EC2 continues to accrue hourly charges - use `--teardown` immediately after completion
 
 ---

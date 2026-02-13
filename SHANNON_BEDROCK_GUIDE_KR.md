@@ -202,7 +202,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 **예상 토큰 사용량 (OWASP Juice Shop 기준):**
 
-> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 중형 웹 애플리케이션 (약 10,000 LOC)을 대상으로 측정한 실제 실행 결과입니다.
+> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 중형 웹 애플리케이션 (약 10,000 LOC)을 기준으로 한 예상 비용입니다. 실제 비용은 애플리케이션 복잡도에 따라 크게 달라질 수 있습니다.
 
 | Phase | Input Tokens | Output Tokens | 비용 |
 |-------|--------------|---------------|------|
@@ -232,8 +232,8 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 | Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
 
 > **참고:**
-> - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 실제 측정 결과입니다
-> - 실제 비용은 타겟 앱의 규모, 취약점 수, 소스코드 양에 따라 달라집니다
+> - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 규모 기준 예상치입니다
+> - 실제 비용은 타겟 앱의 복잡도, 취약점 수, 소스코드 양에 따라 **2-3배 이상** 차이날 수 있습니다
 > - EC2를 계속 실행하면 시간당 비용이 추가되므로, 테스트 완료 후 즉시 `--teardown`으로 정리하세요
 
 ---
