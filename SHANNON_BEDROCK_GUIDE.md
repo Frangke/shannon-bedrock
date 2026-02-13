@@ -133,28 +133,165 @@ If you already have an EC2 instance, use `--instance-id` to skip Phase 1:
   --instance-id i-0abc123def456
 ```
 
+---
+
+## Expected Duration
+
+Total deployment and pentest completion takes approximately **1.5-2 hours**.
+
+| Phase | Duration | Description |
+|-------|----------|-------------|
+| **Phase 1: AWS Infrastructure** | 2-3 min | IAM Role creation, EC2 instance launch, status check |
+| **Phase 2: Shannon Setup** | 2-3 min | Wait for Docker/AWS CLI installation, Git clone, S3 download |
+| **Phase 3: Docker Build** | 5-10 min | Build Temporal + Worker images (cached after first run) |
+| **Phase 4: Pre-Reconnaissance** | 10-15 min | External tool scans (nmap, subfinder, whatweb) + source code analysis |
+| **Phase 5: Reconnaissance** | 5-10 min | Attack surface analysis |
+| **Phase 6: Vulnerability Analysis** | 20-30 min | 5 parallel agents (injection, XSS, auth, authz, SSRF) |
+| **Phase 7: Exploitation** | 20-30 min | Execute PoC attacks when vulnerabilities found (parallel) |
+| **Phase 8: Reporting** | 10-15 min | Generate executive-level security report |
+
+> **Note:**
+> - Duration varies based on target application size and complexity
+> - Phases 6 and 7 scale with the number of vulnerabilities found
+> - Docker image build time drops to <1 min after initial build
+
+---
+
+## Expected Costs
+
+### AWS Resource Costs
+
+| Item | Spec | Hourly Cost | Est. Cost (2 hours) |
+|------|------|-------------|---------------------|
+| **EC2 Instance** | t3.large (us-east-1) | $0.0832/hour | **$0.17** |
+| **EBS Volume** | 30GB gp3 | $0.08/GB-month (~$0.0001/GB-hour) | **$0.006** |
+| **Data Transfer** | S3 → EC2 (free), Internet egress (minimal) | - | **~$0.01** |
+
+**EC2 Total: ~$0.19 (~₩260)**
+
+### Bedrock API Costs (Claude Sonnet 4.5)
+
+> Pricing: `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (us-east-1)
+> - Input: $0.003 / 1K tokens
+> - Output: $0.015 / 1K tokens
+
+**Estimated Token Usage (OWASP Juice Shop baseline):**
+
+| Phase | Input Tokens | Output Tokens | Cost |
+|-------|--------------|---------------|------|
+| Pre-Reconnaissance | ~200K | ~50K | $1.35 |
+| Reconnaissance | ~150K | ~30K | $0.90 |
+| Vulnerability Analysis (5 agents) | ~500K | ~100K | $3.00 |
+| Exploitation (5 agents) | ~400K | ~80K | $2.40 |
+| Reporting | ~300K | ~60K | $1.80 |
+| **Total** | **~1,550K** | **~320K** | **$9.45** |
+
+### Model Cost Comparison
+
+| Model | Input Price | Output Price | Est. Total Cost (same tokens) | Speed |
+|-------|-------------|--------------|-------------------------------|-------|
+| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$9.45** | Fast |
+| Claude Sonnet 4 | $0.003 | $0.015 | $9.45 | Moderate |
+| Claude Opus 4 | $0.015 | $0.075 | $47.25 | Slow |
+| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | Very Fast |
+
+### Total Estimated Cost
+
+| Model | EC2 + EBS | Bedrock | Total |
+|-------|-----------|---------|-------|
+| **Claude Sonnet 4.5** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
+| Claude Sonnet 4 | $0.19 | $9.45 | $9.64 (~₩13,200) |
+| Claude Opus 4 | $0.19 | $47.25 | $47.44 (~₩65,000) |
+| Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
+
+> **Note:**
+> - Costs based on OWASP Juice Shop sized web application
+> - Actual costs vary by target app size, vulnerability count, and source code volume
+> - EC2 continues to accrue hourly charges - use `--teardown` immediately after completion
+
+---
+
 ### Step 3: Monitor
 
-Use the commands printed at deployment completion:
+#### Method 1: SSM Session with Real-time Logs
 
 ```bash
 # Connect via SSM
-aws ssm start-session --target <instance-id> --region us-east-1
+aws ssm start-session --target <INSTANCE_ID> --region us-east-1
 
 # Switch to ubuntu user
 sudo su - ubuntu
 cd ~/shannon
 
-# View logs
-./shannon logs ID=<workflow-id>
+# Real-time log streaming
+./shannon logs
+
+# Or query specific workflow ID
 ./shannon query ID=<workflow-id>
 
-# Temporal Web UI (port forwarding)
-aws ssm start-session --target <instance-id> --region us-east-1 \
+# View Docker container logs directly
+docker compose logs -f worker
+```
+
+**Example output:**
+```
+[pre-recon] Starting code analysis and external reconnaissance...
+[pre-recon] Running nmap scan on https://target-site.com...
+[pre-recon] Found 3 open ports: 80, 443, 8080
+[recon] Analyzing attack surface...
+[injection-vuln] Testing SQL injection vulnerabilities...
+```
+
+#### Method 2: Temporal Web UI
+
+Temporal Web UI provides visual workflow progress monitoring.
+
+```bash
+# Port forward from local machine (new terminal)
+aws ssm start-session --target <INSTANCE_ID> --region us-east-1 \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
-# Open http://localhost:8233 in your browser
 ```
+
+Once connected, open **http://localhost:8233** in your browser.
+
+**Temporal UI shows:**
+- Overall workflow status (Running / Completed / Failed)
+- Phase-by-phase progress and duration
+- Parallel agent execution (5 vulnerability/exploitation agents)
+- Detailed logs and error messages per agent
+- Retry history and heartbeat status
+
+#### Method 3: Check audit-logs Directory
+
+```bash
+# Inside EC2
+cd ~/shannon/audit-logs
+
+# Check session folder
+ls -la
+# Output: vultest1.vitzzang.com_shannon-1234567890/
+
+# View prompts (for reproducibility)
+cat vultest1.vitzzang.com_shannon-1234567890/prompts/pre-recon.txt
+
+# View agent execution logs
+cat vultest1.vitzzang.com_shannon-1234567890/agents/pre-recon.log
+
+# View metrics (cost and timing)
+cat vultest1.vitzzang.com_shannon-1234567890/session.json | jq
+```
+
+#### Progress Estimation
+
+| Phase | File/Directory Presence | Estimated Progress |
+|-------|------------------------|-------------------|
+| `audit-logs/*/prompts/pre-recon.txt` | ✓ | 10% |
+| `repos/*/deliverables/code_analysis_deliverable.md` | ✓ | 25% |
+| `repos/*/deliverables/recon_deliverable.md` | ✓ | 35% |
+| `repos/*/deliverables/injection_analysis_deliverable.md` | ✓ | 50% |
+| `repos/*/deliverables/*_exploitation_evidence.md` | ✓ | 75% |
+| `repos/*/deliverables/comprehensive_security_assessment_report.md` | ✓ | 100% (Complete!) |
 
 ### Step 4: Download Results
 
@@ -170,6 +307,92 @@ aws s3 cp /tmp/shannon-results.tar.gz s3://your-bucket/shannon-results.tar.gz
 aws s3 cp s3://your-bucket/shannon-results.tar.gz ./shannon-results.tar.gz
 tar xzf shannon-results.tar.gz
 ```
+
+#### Generated Deliverables
+
+Shannon generates comprehensive security reports:
+
+##### 1. Main Report (Essential)
+
+| File | Content | Est. Size |
+|------|---------|-----------|
+| **`comprehensive_security_assessment_report.md`** | Executive-level comprehensive security report | 50-200KB |
+
+**Includes:**
+- Executive Summary
+- Vulnerability findings with CVSS scores
+- Business impact assessment
+- Prioritized remediation recommendations
+- Detailed Proof-of-Concept (PoC) code
+
+##### 2. Phase-Specific Reports
+
+| Phase | File | Content |
+|-------|------|---------|
+| **Pre-Recon** | `code_analysis_deliverable.md` | Source code analysis + nmap/subfinder/whatweb results |
+| **Recon** | `recon_deliverable.md` | Attack surface analysis and endpoint mapping |
+| **Vuln Analysis** | `injection_analysis_deliverable.md` | SQL injection, command injection analysis |
+| | `xss_analysis_deliverable.md` | XSS (Reflected/Stored/DOM) analysis |
+| | `auth_analysis_deliverable.md` | Authentication bypass vulnerability analysis |
+| | `authz_analysis_deliverable.md` | Authorization escalation flaw analysis |
+| | `ssrf_analysis_deliverable.md` | SSRF (Server-Side Request Forgery) analysis |
+| **Exploitation** | `injection_exploitation_evidence.md` | Injection attack PoC and evidence |
+| | `xss_exploitation_evidence.md` | XSS attack PoC and evidence |
+| | `auth_exploitation_evidence.md` | Authentication bypass attack PoC |
+| | `authz_exploitation_evidence.md` | Authorization escalation attack PoC |
+| | `ssrf_exploitation_evidence.md` | SSRF attack PoC (if applicable) |
+
+##### 3. Audit Logs
+
+```
+audit-logs/
+└── <hostname>_shannon-<timestamp>/
+    ├── session.json              # Session metrics (cost, timing, token usage)
+    ├── prompts/                  # Exact prompts used per agent
+    │   ├── pre-recon.txt
+    │   ├── recon.txt
+    │   ├── injection-vuln.txt
+    │   └── ...
+    └── agents/                   # Agent execution logs
+        ├── pre-recon.log
+        ├── injection-vuln.log
+        └── ...
+```
+
+**session.json example:**
+```json
+{
+  "hostname": "vultest1.vitzzang.com",
+  "sessionId": "shannon-1707736800",
+  "startTime": "2026-02-12T08:25:00Z",
+  "endTime": "2026-02-12T10:12:34Z",
+  "totalDuration": "1h47m34s",
+  "totalCost": 9.42,
+  "phases": {
+    "pre-recon": {
+      "inputTokens": 198432,
+      "outputTokens": 48921,
+      "cost": 1.33,
+      "duration": "14m23s"
+    },
+    "injection-vuln": {
+      "inputTokens": 102341,
+      "outputTokens": 21432,
+      "cost": 0.63,
+      "duration": "7m12s"
+    }
+  }
+}
+```
+
+##### 4. Summary
+
+Total deliverables size: **10-50MB** (varies by target app size)
+
+**Essential files:**
+1. ✅ `comprehensive_security_assessment_report.md` (highest priority)
+2. ✅ `session.json` (cost and timing verification)
+3. ✅ `*_exploitation_evidence.md` (actual attack PoCs)
 
 ### Step 5: Teardown
 
@@ -497,6 +720,51 @@ A request reached the Bedrock API without SigV4 signing.
 docker compose exec worker env | grep ANTHROPIC_MODEL
 ```
 
+### 403 User is not authorized to perform bedrock:InvokeModel on inference-profile
+
+**Symptom:**
+```
+User: arn:aws:sts::ACCOUNT:assumed-role/shannon-ec2-bedrock-role/INSTANCE
+is not authorized to perform: bedrock:InvokeModel
+on resource: arn:aws:bedrock:REGION:ACCOUNT:inference-profile/MODEL_ID
+```
+
+**Cause:** The IAM Role's Bedrock policy lacks permissions for `inference-profile` resources. Occurs when policy only includes `foundation-model/*`.
+
+**Fix:** Update IAM policy to include `inference-profile` and `provisioned-model` resources.
+
+```bash
+aws iam put-role-policy \
+  --role-name shannon-ec2-bedrock-role \
+  --policy-name bedrock-invoke \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:ListFoundationModels",
+          "bedrock:GetFoundationModel"
+        ],
+        "Resource": [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:ACCOUNT_ID:inference-profile/*",
+          "arn:aws:bedrock:*:ACCOUNT_ID:provisioned-model/*"
+        ]
+      }
+    ]
+  }'
+```
+
+> **Note:** Replace `ACCOUNT_ID` with your AWS account ID, or auto-detect:
+> ```bash
+> ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+> ```
+
+After updating permissions, restart Shannon. Running workflows will automatically retry.
+
 ### Common Issues
 
 | Problem | Solution |
@@ -506,9 +774,101 @@ docker compose exec worker env | grep ANTHROPIC_MODEL
 | `Cannot connect to Docker daemon` | `sudo systemctl start docker` |
 | `ERROR: Set ANTHROPIC_API_KEY` | Verify `CLAUDE_CODE_USE_BEDROCK=1` is set in `.env` |
 | `Repository not found at ./repos/...` | `mkdir -p repos/<name>` |
-| `AccessDeniedException` | Verify IAM Role has `bedrock:InvokeModel` permission |
+| `AccessDeniedException` | Verify IAM Role has `bedrock:InvokeModel` permission and inference-profile resource access |
 | Model access denied | Enable Claude models in AWS Console > Bedrock > Model access |
 | Auth failure (mid-run) | IMDS temporary credentials expired. Re-fetch and restart |
 | Unexpected reboot during build | Ubuntu auto security updates. Check user-data has `Automatic-Reboot "false"` |
 | Docker build `permission denied` (audit-logs) | `sudo chown -R ubuntu:docker audit-logs && sudo chmod -R 755 audit-logs` then restart |
 | `Validation failed: Missing required deliverable files` | `chmod -R 777 repos/<name>/` then restart |
+
+---
+
+## deploy-shannon.sh Known Issues and Fixes
+
+This repository's `deploy-shannon.sh` script has the following issues resolved (as of 2026-02-12):
+
+### 1. SSM Parameters JSON Formatting Error
+
+**Symptom:**
+```
+Error parsing parameter '--parameters': Expected: ',', received: '''
+```
+
+**Cause:** SSM `send-command`'s `--parameters` expects JSON format, but Bash arrays were passed as plain strings.
+
+**Fix (commit 41728c6):**
+- `ssm_run()` function now converts commands array to proper JSON format
+- Quote and backslash escaping implemented
+- Before: `--parameters "commands=${commands[*]}"`
+- After: `--parameters "{\"commands\":${commands_json}}"`
+
+### 2. Heredoc JSON Escape Error
+
+**Symptom:**
+```
+Error parsing parameter '--parameters': Invalid JSON: Invalid control character at: line 1 column 86
+```
+
+**Cause:** `.env` file generation used heredoc, but newlines weren't properly escaped in JSON strings.
+
+**Fix (commit 66e39bc):**
+- Use `printf` instead of heredoc for .env file creation
+- Explicitly include `\n` for newlines
+- Before: `cat > .env << ENVEOF ... ENVEOF`
+- After: `printf "CLAUDE_CODE_USE_BEDROCK=1\n..." > .env`
+
+### 3. AWS CLI Not Installed
+
+**Symptom:**
+```
+bash: line 1: aws: command not found
+failed to run commands: exit status 127
+```
+
+**Cause:** Ubuntu 24.04 AMI doesn't include AWS CLI by default. Source code download from S3 fails.
+
+**Fix (commit 9fc01f0):**
+- Added AWS CLI v2 installation to user-data script
+- Uses official AWS CLI installer
+```bash
+apt-get install -y unzip
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "/tmp/awscliv2.zip"
+unzip -q /tmp/awscliv2.zip -d /tmp
+/tmp/aws/install
+```
+
+### 4. Tar Extraction Path Error
+
+**Symptom:**
+```
+chmod: cannot access '/home/ubuntu/shannon/repos/benchmark-site/': No such file or directory
+failed to run commands: exit status 1
+```
+
+**Cause:** S3 tar.gz file contains files at root level. Extracting directly to `repos/` creates `repos/index.html` instead of `repos/benchmark-site/`.
+
+**Fix (commit 6553618):**
+- Create `repos/${REPO_NAME}/` directory before tar extraction
+- Extract into the subdirectory
+- Before: `tar xzf /tmp/source.tar.gz -C repos/`
+- After: `mkdir -p repos/${REPO_NAME} && tar xzf /tmp/source.tar.gz -C repos/${REPO_NAME}/`
+
+### Verification
+
+All 4 fixes applied successfully:
+
+```bash
+=== Phase 1: AWS Infrastructure ===
+✓ IAM Role created
+✓ EC2 Instance created (Ubuntu 24.04)
+
+=== Phase 2: Shannon Setup ===
+✓ Docker installation complete
+✓ Shannon repository cloned
+✓ .env file created (Bedrock configuration)
+✓ S3 source code downloaded
+✓ Permissions set
+
+=== Phase 3: Starting Shannon ===
+✓ Temporal workflow started
+```
