@@ -609,16 +609,19 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 ## `ANTHROPIC_MODEL` Reference
 
-| Value | Description |
-|-------|-------------|
-| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (no CRIS needed) |
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (no CRIS needed) |
-| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (requires CRIS activation) |
-| `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 |
-| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 |
+| Model ID | Model | Type | Notes |
+|----------|-------|------|-------|
+| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 | Inference Profile (CRIS) | US routing, enabled by default |
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 | Inference Profile (CRIS) | US routing, enabled by default |
+| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 | Inference Profile (CRIS) | Global routing, requires activation |
+| `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 | Inference Profile (CRIS) | US routing, high cost |
+| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 | Inference Profile (CRIS) | US routing, low cost |
 
-> `us.` prefix routes to a single region and works without additional setup.
-> `global.` prefix requires Cross-Region Inference (CRIS) to be enabled in the AWS console.
+**Prefix explanation:**
+- `us.` prefix: Cross-region inference profile (US routing), enabled by default in Model access
+- `global.` prefix: Cross-region inference profile (global routing), requires explicit activation in Model access
+
+**Important:** All Claude 4.x models use cross-region inference profiles, except Sonnet 3.5 v1 (`claude-3-5-sonnet-20240620-v1:0`).
 
 ---
 
@@ -632,7 +635,7 @@ Model selection (sl → jE function):
 ├─ process.env.ANTHROPIC_MODEL → use if set
 └─ fallback → default mapping:
     ├─ bedrock provider: dZ0.bedrock = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    └─ global. prefix → requires Cross-Region Inference (CRIS)
+    └─ global. prefix → requires explicit activation in Model access
 ```
 
 > `claude-executor.ts` passes `process.env.ANTHROPIC_MODEL` to `query({ model: ... })`, so the `.env` value takes highest priority.
@@ -700,7 +703,7 @@ A request reached the Bedrock API without SigV4 signing.
 
 `cli.js` is calling the Bedrock API with an invalid model ID.
 
-**Cause:** If `ANTHROPIC_MODEL` is not set, the default `global.anthropic.claude-sonnet-4-5-20250929-v1:0` is used. This requires CRIS to be enabled.
+**Cause:** If `ANTHROPIC_MODEL` is not set, the default `global.anthropic.claude-sonnet-4-5-20250929-v1:0` is used. This model must be explicitly enabled in AWS Bedrock Model access.
 
 **Fix:**
 1. Verify `.env` has `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0`

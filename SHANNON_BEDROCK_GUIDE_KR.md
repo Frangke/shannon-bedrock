@@ -668,17 +668,19 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 Shannon 배포에 사용 가능한 Bedrock Claude 모델:
 
-| 모델 ID | 모델 | 리전 타입 | 비고 |
+| 모델 ID | 모델 | 타입 | 비고 |
 |---------|------|-----------|------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Claude Sonnet 4 | 단일 리전 (`us.`) | CRIS 설정 불필요 |
-| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | 단일 리전 (`us.`) | CRIS 설정 불필요 |
-| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | 글로벌 라우팅 | AWS 콘솔에서 CRIS 활성화 필요 |
-| `us.anthropic.claude-opus-4-20250514-v1:0` | Claude Opus 4 | 단일 리전 (`us.`) | 높은 비용, 최고 추론 능력 |
-| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Claude Haiku 4.5 | 단일 리전 (`us.`) | 낮은 비용, 빠르지만 능력 제한적 |
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Claude Sonnet 4 | Inference Profile (CRIS) | US 리전 라우팅, 기본 활성화 |
+| `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | Inference Profile (CRIS) | US 리전 라우팅, 기본 활성화 |
+| `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Claude Sonnet 4.5 | Inference Profile (CRIS) | 글로벌 라우팅, Model access에서 활성화 필요 |
+| `us.anthropic.claude-opus-4-20250514-v1:0` | Claude Opus 4 | Inference Profile (CRIS) | US 리전 라우팅, 높은 비용 |
+| `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Claude Haiku 4.5 | Inference Profile (CRIS) | US 리전 라우팅, 낮은 비용 |
 
 **Prefix 설명:**
-- `us.` prefix: 단일 AWS 리전 라우팅, 별도 설정 없이 사용 가능
-- `global.` prefix: Cross-Region Inference(CRIS) 사용, AWS 콘솔 > Bedrock > Model access에서 활성화 필요
+- `us.` prefix: Cross-region inference profile (US 라우팅), Model access에서 기본 활성화되어 별도 설정 불필요
+- `global.` prefix: Cross-region inference profile (글로벌 라우팅), Model access에서 명시적으로 활성화 필요
+
+**중요:** Sonnet 3.5 v1 (`claude-3-5-sonnet-20240620-v1:0`)을 제외한 모든 Claude 4.x 모델은 Cross-region inference profile을 사용합니다.
 
 **모델 선택:**
 테스트 목적과 예산에 맞춰 선택하세요. 배포 전에 AWS 계정의 Bedrock 모델 액세스 설정에서 해당 모델이 활성화되어 있는지 확인하세요.
@@ -695,7 +697,7 @@ Shannon 배포에 사용 가능한 Bedrock Claude 모델:
 ├─ process.env.ANTHROPIC_MODEL 확인 → 있으면 사용
 └─ 없으면 → 기본 매핑 사용:
     ├─ bedrock provider: dZ0.bedrock = "global.anthropic.claude-sonnet-4-5-20250929-v1:0"
-    └─ global. prefix → Cross-Region Inference(CRIS) 필요
+    └─ global. prefix → Model access에서 명시적 활성화 필요
 ```
 
 > `claude-executor.ts`가 `process.env.ANTHROPIC_MODEL`을 `query({ model: ... })`로 전달하므로, `.env`의 `ANTHROPIC_MODEL` 값이 최우선으로 적용됩니다.
@@ -855,7 +857,7 @@ Bedrock API에 SigV4 서명 없이 요청이 도달했다는 의미입니다.
 
 `cli.js`가 잘못된 모델 ID로 Bedrock API를 호출하고 있습니다.
 
-**원인:** `ANTHROPIC_MODEL`이 설정되지 않으면 기본값으로 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`이 사용되며, CRIS가 활성화되지 않으면 에러가 발생합니다.
+**원인:** `ANTHROPIC_MODEL`이 설정되지 않으면 기본값으로 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`이 사용되며, AWS Bedrock Model access에서 해당 모델이 활성화되지 않았으면 에러가 발생합니다.
 
 **해결:**
 1. `.env`에 `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0` 설정 확인
