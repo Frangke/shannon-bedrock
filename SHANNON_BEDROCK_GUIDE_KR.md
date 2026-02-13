@@ -226,10 +226,10 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 | 모델 | EC2 + EBS | Bedrock | 총 비용 |
 |------|-----------|---------|---------|
-| **Claude Sonnet 4.5** | $0.25 | $20.85 | **$21.10 (~₩28,900)** |
-| Claude Sonnet 4 | $0.25 | $20.85 | $21.10 (~₩28,900) |
-| Claude Opus 4 | $0.25 | $104.25 | $104.50 (~₩143,000) |
-| Claude Haiku 4.5 | $0.25 | $5.56 | $5.81 (~₩8,000) |
+| **Claude Sonnet 4.5** | $0.19 | $20.85 | **$21.04 (~₩28,800)** |
+| Claude Sonnet 4 | $0.19 | $20.85 | $21.04 (~₩28,800) |
+| Claude Opus 4 | $0.19 | $104.25 | $104.44 (~₩143,000) |
+| Claude Haiku 4.5 | $0.19 | $5.56 | $5.75 (~₩7,900) |
 
 > **참고:**
 > - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 규모 기준 예상치입니다
