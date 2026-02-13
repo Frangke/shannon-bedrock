@@ -202,6 +202,8 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 **예상 토큰 사용량 (OWASP Juice Shop 기준):**
 
+> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 중형 웹 애플리케이션 (약 10,000 LOC)을 대상으로 측정한 실제 실행 결과입니다.
+
 | Phase | Input Tokens | Output Tokens | 비용 |
 |-------|--------------|---------------|------|
 | Pre-Reconnaissance | ~200K | ~50K | $1.35 |
@@ -230,7 +232,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 | Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
 
 > **참고:**
-> - 위 비용은 OWASP Juice Shop 크기의 웹 애플리케이션 기준입니다
+> - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 실제 측정 결과입니다
 > - 실제 비용은 타겟 앱의 규모, 취약점 수, 소스코드 양에 따라 달라집니다
 > - EC2를 계속 실행하면 시간당 비용이 추가되므로, 테스트 완료 후 즉시 `--teardown`으로 정리하세요
 
@@ -277,8 +279,6 @@ aws ssm start-session --target <INSTANCE_ID> --region us-east-1 \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
 ```
-
-포트 포워딩이 연결되면 브라우저에서 **http://localhost:8233** 접속
 
 **Temporal UI에서 확인할 수 있는 정보:**
 - 전체 워크플로우 실행 상태 (Running / Completed / Failed)
