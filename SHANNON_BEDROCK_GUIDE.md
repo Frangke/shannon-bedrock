@@ -350,18 +350,24 @@ audit-logs/
   "startTime": "2026-02-12T08:25:00Z",
   "endTime": "2026-02-12T10:12:34Z",
   "totalDuration": "1h47m34s",
-  "totalCost": 9.42,
+  "totalCost": 20.85,
   "phases": {
     "pre-recon": {
-      "inputTokens": 198432,
-      "outputTokens": 48921,
-      "cost": 1.33,
+      "inputTokens": 398245,
+      "outputTokens": 98732,
+      "cost": 2.68,
       "duration": "14m23s"
     },
+    "recon": {
+      "inputTokens": 295821,
+      "outputTokens": 59234,
+      "cost": 1.78,
+      "duration": "8m15s"
+    },
     "injection-vuln": {
-      "inputTokens": 102341,
-      "outputTokens": 21432,
-      "cost": 0.63,
+      "inputTokens": 238954,
+      "outputTokens": 49821,
+      "cost": 1.46,
       "duration": "7m12s"
     }
   }
@@ -590,12 +596,14 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 ### Cost Reference
 
-| Model | Estimated Duration | Estimated Cost |
+| Model | Estimated Duration | Estimated Cost (Bedrock API) |
 |-------|-------------------|----------------|
-| Claude Sonnet 4 (us.anthropic) | ~1.5 hours | ~$23 |
-| Claude Sonnet 4.5 | ~1.5 hours | ~$50 |
+| **Claude Sonnet 4.5** | ~1.5-2 hours | **~$21** |
+| Claude Sonnet 4 | ~1.5-2 hours | ~$21 |
+| Claude Opus 4 | ~2-3 hours | ~$104 |
+| Claude Haiku 4.5 | ~1-1.5 hours | ~$6 |
 
-> Costs vary depending on target application complexity.
+> Costs vary depending on target application complexity. Based on OWASP Juice Shop (~10,000 LOC) estimate.
 
 ---
 
