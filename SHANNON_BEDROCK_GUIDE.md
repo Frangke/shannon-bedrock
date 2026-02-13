@@ -181,34 +181,35 @@ Total deployment and pentest completion takes approximately **1.5-2 hours**.
 
 | Phase | Input Tokens | Output Tokens | Cost |
 |-------|--------------|---------------|------|
-| Pre-Reconnaissance | ~200K | ~50K | $1.35 |
-| Reconnaissance | ~150K | ~30K | $0.90 |
-| Vulnerability Analysis (5 agents) | ~500K | ~100K | $3.00 |
-| Exploitation (5 agents) | ~400K | ~80K | $2.40 |
-| Reporting | ~300K | ~60K | $1.80 |
-| **Total** | **~1,550K** | **~320K** | **$9.45** |
+| Pre-Reconnaissance | ~400K | ~100K | $2.70 |
+| Reconnaissance | ~300K | ~60K | $1.80 |
+| Vulnerability Analysis (5 agents) | ~1,200K | ~250K | $7.35 |
+| Exploitation (5 agents) | ~900K | ~180K | $5.40 |
+| Reporting | ~600K | ~120K | $3.60 |
+| **Total** | **~3,400K** | **~710K** | **$20.85** |
 
 ### Model Cost Comparison
 
 | Model | Input Price | Output Price | Est. Total Cost (same tokens) | Speed |
 |-------|-------------|--------------|-------------------------------|-------|
-| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$9.45** | Fast |
-| Claude Sonnet 4 | $0.003 | $0.015 | $9.45 | Moderate |
-| Claude Opus 4 | $0.015 | $0.075 | $47.25 | Slow |
-| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | Very Fast |
+| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$20.85** | Fast |
+| Claude Sonnet 4 | $0.003 | $0.015 | $20.85 | Moderate |
+| Claude Opus 4 | $0.015 | $0.075 | $104.25 | Slow |
+| Claude Haiku 4.5 | $0.0008 | $0.004 | $5.56 | Very Fast |
 
 ### Total Estimated Cost
 
 | Model | EC2 + EBS | Bedrock | Total |
 |-------|-----------|---------|-------|
-| **Claude Sonnet 4.5** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
-| Claude Sonnet 4 | $0.19 | $9.45 | $9.64 (~₩13,200) |
-| Claude Opus 4 | $0.19 | $47.25 | $47.44 (~₩65,000) |
-| Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
+| **Claude Sonnet 4.5** | $0.19 | $20.85 | **$21.04 (~₩28,800)** |
+| Claude Sonnet 4 | $0.19 | $20.85 | $21.04 (~₩28,800) |
+| Claude Opus 4 | $0.19 | $104.25 | $104.44 (~₩143,000) |
+| Claude Haiku 4.5 | $0.19 | $5.56 | $5.75 (~₩7,900) |
 
 > **Note:**
 > - Costs based on [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) size estimate
-> - Actual costs may vary **2-3x or more** depending on application complexity, vulnerability count, and source code volume
+> - Actual costs may vary **much more significantly** depending on application complexity, vulnerability count, and source code volume
+> - Simple applications: $10-20, Complex applications: $30-50+ possible
 > - EC2 continues to accrue hourly charges - use `--teardown` immediately after completion
 
 ---

@@ -202,38 +202,39 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 **예상 토큰 사용량 (OWASP Juice Shop 기준):**
 
-> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 중형 웹 애플리케이션 (약 10,000 LOC)을 기준으로 한 예상 비용입니다. 실제 비용은 애플리케이션 복잡도에 따라 크게 달라질 수 있습니다.
+> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 복잡한 웹 애플리케이션 (약 10,000 LOC, 다수의 취약점 포함)을 기준으로 한 예상 비용입니다. 실제 비용은 애플리케이션 복잡도에 따라 훨씬 더 크게 차이날 수 있습니다.
 
 | Phase | Input Tokens | Output Tokens | 비용 |
 |-------|--------------|---------------|------|
-| Pre-Reconnaissance | ~200K | ~50K | $1.35 |
-| Reconnaissance | ~150K | ~30K | $0.90 |
-| Vulnerability Analysis (5 agents) | ~500K | ~100K | $3.00 |
-| Exploitation (5 agents) | ~400K | ~80K | $2.40 |
-| Reporting | ~300K | ~60K | $1.80 |
-| **총합** | **~1,550K** | **~320K** | **$9.45** |
+| Pre-Reconnaissance | ~400K | ~100K | $2.70 |
+| Reconnaissance | ~300K | ~60K | $1.80 |
+| Vulnerability Analysis (5 agents) | ~1,200K | ~250K | $7.35 |
+| Exploitation (5 agents) | ~900K | ~180K | $5.40 |
+| Reporting | ~600K | ~120K | $3.60 |
+| **총합** | **~3,400K** | **~710K** | **$20.85** |
 
 ### 모델별 비용 비교
 
 | 모델 | Input 가격 | Output 가격 | 예상 총 비용 (동일 토큰) | 속도 |
 |------|-----------|------------|----------------------|------|
-| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$9.45** | 빠름 |
-| Claude Sonnet 4 | $0.003 | $0.015 | $9.45 | 보통 |
-| Claude Opus 4 | $0.015 | $0.075 | $47.25 | 느림 |
-| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | 매우 빠름 |
+| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$20.85** | 빠름 |
+| Claude Sonnet 4 | $0.003 | $0.015 | $20.85 | 보통 |
+| Claude Opus 4 | $0.015 | $0.075 | $104.25 | 느림 |
+| Claude Haiku 4.5 | $0.0008 | $0.004 | $5.56 | 매우 빠름 |
 
 ### 총 예상 비용
 
 | 모델 | EC2 + EBS | Bedrock | 총 비용 |
 |------|-----------|---------|---------|
-| **Claude Sonnet 4.5** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
-| Claude Sonnet 4 | $0.19 | $9.45 | $9.64 (~₩13,200) |
-| Claude Opus 4 | $0.19 | $47.25 | $47.44 (~₩65,000) |
-| Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
+| **Claude Sonnet 4.5** | $0.25 | $20.85 | **$21.10 (~₩28,900)** |
+| Claude Sonnet 4 | $0.25 | $20.85 | $21.10 (~₩28,900) |
+| Claude Opus 4 | $0.25 | $104.25 | $104.50 (~₩143,000) |
+| Claude Haiku 4.5 | $0.25 | $5.56 | $5.81 (~₩8,000) |
 
 > **참고:**
 > - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 규모 기준 예상치입니다
-> - 실제 비용은 타겟 앱의 복잡도, 취약점 수, 소스코드 양에 따라 **2-3배 이상** 차이날 수 있습니다
+> - **실제 비용은 애플리케이션 복잡도, 취약점 수, 코드 품질에 따라 훨씬 더 크게 차이날 수 있습니다**
+> - 간단한 애플리케이션: $10-20, 복잡한 애플리케이션: $30-50 이상 소요 가능
 > - EC2를 계속 실행하면 시간당 비용이 추가되므로, 테스트 완료 후 즉시 `--teardown`으로 정리하세요
 
 ---
