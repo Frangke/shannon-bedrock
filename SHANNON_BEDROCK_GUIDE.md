@@ -115,7 +115,7 @@ What the script does automatically:
 | `--target-url` | Yes | - | Pentest target URL |
 | `--s3-source` | Yes | - | Target source code S3 path (tar.gz) |
 | `--repo-name` | No | Extracted from S3 filename | Folder name under repos/ |
-| `--model` | No | `us.anthropic.claude-sonnet-4-20250514-v1:0` | Bedrock model ID |
+| `--model` | No | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock model ID |
 | `--region` | No | `us-east-1` | AWS region |
 | `--instance-type` | No | `t3.large` | EC2 instance type |
 | `--instance-id` | No | - | Reuse existing EC2 (skips Phase 1) |
@@ -305,7 +305,7 @@ cat > .env << EOF
 CLAUDE_CODE_USE_BEDROCK=1
 CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 AWS_REGION=us-east-1
-ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0
+ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
@@ -397,8 +397,8 @@ ls ~/shannon/repos/vuln-site/deliverables/
 
 | Value | Description |
 |-------|-------------|
-| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (recommended, no CRIS needed) |
 | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (no CRIS needed) |
+| `us.anthropic.claude-sonnet-4-20250514-v1:0` | Sonnet 4 (no CRIS needed) |
 | `global.anthropic.claude-sonnet-4-5-20250929-v1:0` | Sonnet 4.5 (requires CRIS activation) |
 | `us.anthropic.claude-opus-4-20250514-v1:0` | Opus 4 |
 | `us.anthropic.claude-haiku-4-5-20251001-v1:0` | Haiku 4.5 |
@@ -489,7 +489,7 @@ A request reached the Bedrock API without SigV4 signing.
 **Cause:** If `ANTHROPIC_MODEL` is not set, the default `global.anthropic.claude-sonnet-4-5-20250929-v1:0` is used. This requires CRIS to be enabled.
 
 **Fix:**
-1. Verify `.env` has `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0`
+1. Verify `.env` has `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0`
 2. Verify `docker-compose.yml` passes `ANTHROPIC_MODEL` to the worker
 3. Restart with `REBUILD=true` after changes (TypeScript rebuild needed)
 

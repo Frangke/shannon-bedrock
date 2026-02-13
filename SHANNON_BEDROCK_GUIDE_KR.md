@@ -242,7 +242,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 ```bash
 # SSM으로 EC2 접속
-aws ssm start-session --target i-0752374c325ca94cb --region us-east-1
+aws ssm start-session --target <INSTANCE_ID> --region us-east-1
 
 # ubuntu 유저로 전환
 sudo su - ubuntu
@@ -273,7 +273,7 @@ Temporal Web UI를 통해 시각적으로 워크플로우 진행 상황을 확�
 
 ```bash
 # 로컬 머신에서 포트 포워딩 (새 터미널에서 실행)
-aws ssm start-session --target i-0752374c325ca94cb --region us-east-1 \
+aws ssm start-session --target <INSTANCE_ID> --region us-east-1 \
   --document-name AWS-StartPortForwardingSession \
   --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
 ```
