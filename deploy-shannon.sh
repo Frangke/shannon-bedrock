@@ -9,7 +9,7 @@ set -euo pipefail
 # =============================================================================
 REGION="us-east-1"
 INSTANCE_TYPE="t3.large"
-MODEL="us.anthropic.claude-sonnet-4-20250514-v1:0"
+MODEL="us.anthropic.claude-sonnet-4-5-20250929-v1:0"
 ROLE_NAME="shannon-ec2-bedrock-role"
 PROFILE_NAME="shannon-ec2-bedrock-profile"
 REPO_NAME=""

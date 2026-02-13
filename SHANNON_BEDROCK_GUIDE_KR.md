@@ -140,7 +140,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 | `--target-url` | O | - | 펜테스트 대상 URL |
 | `--s3-source` | O | - | 타겟 소스코드 S3 경로 (tar.gz) |
 | `--repo-name` | X | S3 파일명에서 추출 | repos/ 하위 폴더명 |
-| `--model` | X | `us.anthropic.claude-sonnet-4-20250514-v1:0` | Bedrock 모델 ID |
+| `--model` | X | `us.anthropic.claude-sonnet-4-5-20250929-v1:0` | Bedrock 모델 ID |
 | `--region` | X | `us-east-1` | AWS 리전 |
 | `--instance-type` | X | `t3.large` | EC2 인스턴스 타입 |
 | `--instance-id` | X | - | 기존 EC2 재사용 시 인스턴스 ID (Phase 1 스킵) |
@@ -194,9 +194,9 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 **EC2 총 비용: 약 $0.19 (~₩260)**
 
-### Bedrock API 비용 (Claude Sonnet 4)
+### Bedrock API 비용 (Claude Sonnet 4.5)
 
-> 가격 기준: `us.anthropic.claude-sonnet-4-20250514-v1:0` (us-east-1)
+> 가격 기준: `us.anthropic.claude-sonnet-4-5-20250929-v1:0` (us-east-1)
 > - Input: $0.003 / 1K tokens
 > - Output: $0.015 / 1K tokens
 
@@ -213,25 +213,21 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 ### 모델별 비용 비교
 
-| 모델 | Input 가격 | Output 가격 | 예상 총 비용 (동일 토큰) | 속도 | 품질 |
-|------|-----------|------------|----------------------|------|------|
-| **Claude Sonnet 4** | $0.003 | $0.015 | **$9.45** | 보통 | 최고 (권장) |
-| Claude Sonnet 4.5 | $0.003 | $0.015 | $9.45 | 빠름 | 최고 |
-| Claude Opus 4 | $0.015 | $0.075 | $47.25 | 느림 | 최고 (복잡한 취약점) |
-| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | 매우 빠름 | 양호 (간단한 앱) |
-
-> **권장 모델 선택:**
-> - **일반 웹앱**: Claude Sonnet 4 (기본값)
-> - **복잡한 엔터프라이즈 앱**: Claude Opus 4 (`--model us.anthropic.claude-opus-4-20250514-v1:0`)
-> - **비용 최적화**: Claude Haiku 4.5 (`--model us.anthropic.claude-haiku-4-5-20251001-v1:0`)
+| 모델 | Input 가격 | Output 가격 | 예상 총 비용 (동일 토큰) | 속도 |
+|------|-----------|------------|----------------------|------|
+| **Claude Sonnet 4.5** | $0.003 | $0.015 | **$9.45** | 빠름 |
+| Claude Sonnet 4 | $0.003 | $0.015 | $9.45 | 보통 |
+| Claude Opus 4 | $0.015 | $0.075 | $47.25 | 느림 |
+| Claude Haiku 4.5 | $0.0008 | $0.004 | $2.52 | 매우 빠름 |
 
 ### 총 예상 비용
 
-| 시나리오 | EC2 + EBS | Bedrock | 총 비용 |
-|---------|-----------|---------|---------|
-| **표준 (Sonnet 4)** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
-| 복잡한 앱 (Opus 4) | $0.19 | $47.25 | $47.44 (~₩65,000) |
-| 비용 절감 (Haiku 4.5) | $0.19 | $2.52 | $2.71 (~₩3,700) |
+| 모델 | EC2 + EBS | Bedrock | 총 비용 |
+|------|-----------|---------|---------|
+| **Claude Sonnet 4.5** | $0.19 | $9.45 | **$9.64 (~₩13,200)** |
+| Claude Sonnet 4 | $0.19 | $9.45 | $9.64 (~₩13,200) |
+| Claude Opus 4 | $0.19 | $47.25 | $47.44 (~₩65,000) |
+| Claude Haiku 4.5 | $0.19 | $2.52 | $2.71 (~₩3,700) |
 
 > **참고:**
 > - 위 비용은 OWASP Juice Shop 크기의 웹 애플리케이션 기준입니다
@@ -252,7 +248,7 @@ aws ssm start-session --target i-0752374c325ca94cb --region us-east-1
 sudo su - ubuntu
 cd ~/shannon
 
-# 실시간 로그 스트리밍 (권장)
+# 실시간 로그 스트리밍
 ./shannon logs
 
 # 또는 특정 워크플로우 ID로 조회
@@ -271,7 +267,7 @@ docker compose logs -f worker
 [injection-vuln] Testing SQL injection vulnerabilities...
 ```
 
-#### 방법 2: Temporal Web UI (권장)
+#### 방법 2: Temporal Web UI
 
 Temporal Web UI를 통해 시각적으로 워크플로우 진행 상황을 확인할 수 있습니다.
 
@@ -587,7 +583,7 @@ cat > .env << EOF
 CLAUDE_CODE_USE_BEDROCK=1
 CLAUDE_CODE_MAX_OUTPUT_TOKENS=64000
 AWS_REGION=us-east-1
-ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0
+ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0
 AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN
@@ -871,7 +867,7 @@ Bedrock API에 SigV4 서명 없이 요청이 도달했다는 의미입니다.
 **원인:** `ANTHROPIC_MODEL`이 설정되지 않으면 기본값으로 `global.anthropic.claude-sonnet-4-5-20250929-v1:0`이 사용되며, CRIS가 활성화되지 않으면 에러가 발생합니다.
 
 **해결:**
-1. `.env`에 `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-20250514-v1:0` 설정 확인
+1. `.env`에 `ANTHROPIC_MODEL=us.anthropic.claude-sonnet-4-5-20250929-v1:0` 설정 확인
 2. `docker-compose.yml`에 `ANTHROPIC_MODEL` 환경변수가 worker에 전달되는지 확인
 3. 패치 후 `REBUILD=true`로 재시작 (TypeScript 재빌드 필요)
 
