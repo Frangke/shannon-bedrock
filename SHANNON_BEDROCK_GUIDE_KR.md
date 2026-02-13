@@ -202,7 +202,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 
 **예상 토큰 사용량 (OWASP Juice Shop 기준):**
 
-> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Node.js/Express 기반의 복잡한 웹 애플리케이션 (약 10,000 LOC, 다수의 취약점 포함)을 기준으로 한 예상 비용입니다. 실제 비용은 애플리케이션 복잡도에 따라 훨씬 더 크게 차이날 수 있습니다.
+> **비용 산정 기준:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop)처럼 간단한 웹 애플리케이션 (Node.js/Express, 약 10,000 LOC)을 기준으로 한 예상 비용입니다. 실제 비용은 애플리케이션 복잡도에 따라 훨씬 더 크게 차이날 수 있습니다.
 
 | Phase | Input Tokens | Output Tokens | 비용 |
 |-------|--------------|---------------|------|

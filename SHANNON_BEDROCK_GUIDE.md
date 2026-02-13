@@ -177,7 +177,7 @@ Total deployment and pentest completion takes approximately **1.5-2 hours**.
 
 **Estimated Token Usage (OWASP Juice Shop baseline):**
 
-> **Cost Baseline:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Medium-sized Node.js/Express web application (~10,000 LOC) used as reference for cost estimates. Actual costs may vary significantly based on application complexity.
+> **Cost Baseline:** [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) - Simple Node.js/Express web application (~10,000 LOC) used as reference for cost estimates. Actual costs may vary significantly based on application complexity.
 
 | Phase | Input Tokens | Output Tokens | Cost |
 |-------|--------------|---------------|------|
