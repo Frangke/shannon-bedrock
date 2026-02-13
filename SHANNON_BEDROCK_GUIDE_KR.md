@@ -465,7 +465,7 @@ aws iam attach-role-policy \
   --role-name shannon-ec2-bedrock-role \
   --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
 
-# Bedrock 인라인 정책 추가
+# Bedrock 인라인 정책 추가 (inference-profile 지원 포함)
 aws iam put-role-policy \
   --role-name shannon-ec2-bedrock-role \
   --policy-name bedrock-invoke \
@@ -476,9 +476,34 @@ aws iam put-role-policy \
         "Effect": "Allow",
         "Action": [
           "bedrock:InvokeModel",
-          "bedrock:InvokeModelWithResponseStream"
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:ListFoundationModels",
+          "bedrock:GetFoundationModel"
         ],
-        "Resource": "arn:aws:bedrock:us-east-1::foundation-model/*"
+        "Resource": [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:391056362256:inference-profile/*",
+          "arn:aws:bedrock:*:391056362256:provisioned-model/*"
+        ]
+      }
+    ]
+  }'
+
+# S3 읽기 권한 추가 (소스코드 다운로드용)
+aws iam put-role-policy \
+  --role-name shannon-ec2-bedrock-role \
+  --policy-name s3-read \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "s3:GetObject",
+          "s3:ListBucket",
+          "s3:GetBucketLocation"
+        ],
+        "Resource": "arn:aws:s3:::*"
       }
     ]
   }'
@@ -854,6 +879,51 @@ Bedrock API에 SigV4 서명 없이 요청이 도달했다는 의미입니다.
 docker compose exec worker env | grep ANTHROPIC_MODEL
 ```
 
+### 403 User is not authorized to perform bedrock:InvokeModel on inference-profile
+
+**증상:**
+```
+User: arn:aws:sts::ACCOUNT:assumed-role/shannon-ec2-bedrock-role/INSTANCE
+is not authorized to perform: bedrock:InvokeModel
+on resource: arn:aws:bedrock:REGION:ACCOUNT:inference-profile/MODEL_ID
+```
+
+**원인:** IAM Role의 Bedrock 정책에 `inference-profile` 리소스에 대한 권한이 없습니다. 기존 정책이 `foundation-model/*`만 포함하는 경우 발생합니다.
+
+**해결:** IAM 정책을 업데이트하여 `inference-profile`과 `provisioned-model` 리소스를 추가합니다.
+
+```bash
+aws iam put-role-policy \
+  --role-name shannon-ec2-bedrock-role \
+  --policy-name bedrock-invoke \
+  --policy-document '{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "bedrock:InvokeModel",
+          "bedrock:InvokeModelWithResponseStream",
+          "bedrock:ListFoundationModels",
+          "bedrock:GetFoundationModel"
+        ],
+        "Resource": [
+          "arn:aws:bedrock:*::foundation-model/*",
+          "arn:aws:bedrock:*:ACCOUNT_ID:inference-profile/*",
+          "arn:aws:bedrock:*:ACCOUNT_ID:provisioned-model/*"
+        ]
+      }
+    ]
+  }'
+```
+
+> **참고:** `ACCOUNT_ID`를 실제 AWS 계정 ID로 변경하거나, 스크립트에서 자동으로 가져오려면:
+> ```bash
+> ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+> ```
+
+권한 업데이트 후 Shannon을 재시작하세요. 이미 실행 중인 워크플로우는 자동으로 재시도됩니다.
+
 ### 기타 문제
 
 | 문제 | 해결 |
@@ -863,7 +933,7 @@ docker compose exec worker env | grep ANTHROPIC_MODEL
 | `Cannot connect to Docker daemon` | `sudo systemctl start docker` |
 | `ERROR: Set ANTHROPIC_API_KEY` | `.env`에 `CLAUDE_CODE_USE_BEDROCK=1`이 설정되어 있는지 확인 |
 | `Repository not found at ./repos/...` | `mkdir -p repos/<name>` |
-| `AccessDeniedException` | IAM Role에 `bedrock:InvokeModel` 권한 확인 |
+| `AccessDeniedException` | IAM Role에 `bedrock:InvokeModel` 권한 및 inference-profile 리소스 확인 |
 | 모델 접근 불가 | AWS 콘솔 > Bedrock > Model access에서 Claude 모델 활성화 |
 | 인증 실패 (실행 중 갑자기) | `.env`의 임시 자격증명 만료. IMDS에서 재발급 후 재시작 |
 | 빌드 중 갑자기 리부팅 | Ubuntu 자동 보안 업데이트. user-data에 `Automatic-Reboot "false"` 설정 확인 |

@@ -272,7 +272,10 @@ TRUSTEOF
     --role-name "$ROLE_NAME" \
     --policy-arn arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore 2>/dev/null || true
 
-  # Bedrock invoke policy
+  # Get AWS Account ID for inference-profile ARNs
+  AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+  # Bedrock invoke policy (with inference-profile support)
   aws iam put-role-policy \
     --role-name "$ROLE_NAME" \
     --policy-name bedrock-invoke \
@@ -283,14 +286,20 @@ TRUSTEOF
           \"Effect\": \"Allow\",
           \"Action\": [
             \"bedrock:InvokeModel\",
-            \"bedrock:InvokeModelWithResponseStream\"
+            \"bedrock:InvokeModelWithResponseStream\",
+            \"bedrock:ListFoundationModels\",
+            \"bedrock:GetFoundationModel\"
           ],
-          \"Resource\": \"arn:aws:bedrock:${REGION}::foundation-model/*\"
+          \"Resource\": [
+            \"arn:aws:bedrock:*::foundation-model/*\",
+            \"arn:aws:bedrock:*:${AWS_ACCOUNT_ID}:inference-profile/*\",
+            \"arn:aws:bedrock:*:${AWS_ACCOUNT_ID}:provisioned-model/*\"
+          ]
         }
       ]
     }"
 
-  # S3 read policy for source code download
+  # S3 read policy for source code download (all buckets)
   aws iam put-role-policy \
     --role-name "$ROLE_NAME" \
     --policy-name s3-read \
@@ -301,12 +310,10 @@ TRUSTEOF
           \"Effect\": \"Allow\",
           \"Action\": [
             \"s3:GetObject\",
-            \"s3:ListBucket\"
+            \"s3:ListBucket\",
+            \"s3:GetBucketLocation\"
           ],
-          \"Resource\": [
-            \"arn:aws:s3:::${S3_BUCKET}\",
-            \"arn:aws:s3:::${S3_BUCKET}/*\"
-          ]
+          \"Resource\": \"arn:aws:s3:::*\"
         }
       ]
     }"
