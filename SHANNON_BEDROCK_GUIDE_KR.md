@@ -234,7 +234,7 @@ aws s3 cp /tmp/vuln-site-src.tar.gz s3://your-bucket/vuln-site-src.tar.gz --regi
 > **참고:**
 > - 위 비용은 [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) 규모 기준 예상치입니다
 > - **실제 비용은 애플리케이션 복잡도, 취약점 수, 코드 품질에 따라 훨씬 더 크게 차이날 수 있습니다**
-> - 간단한 애플리케이션: $10-20, 복잡한 애플리케이션: $30-50 이상 소요 가능
+> - 간단한 애플리케이션: ~$20, 복잡한 애플리케이션: 훨씬 더 커질 수 있음
 > - EC2를 계속 실행하면 시간당 비용이 추가되므로, 테스트 완료 후 즉시 `--teardown`으로 정리하세요
 
 ---
@@ -270,25 +270,7 @@ docker compose logs -f worker
 [injection-vuln] Testing SQL injection vulnerabilities...
 ```
 
-#### 방법 2: Temporal Web UI
-
-Temporal Web UI를 통해 시각적으로 워크플로우 진행 상황을 확인할 수 있습니다.
-
-```bash
-# 로컬 머신에서 포트 포워딩 (새 터미널에서 실행)
-aws ssm start-session --target <INSTANCE_ID> --region us-east-1 \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
-```
-
-**Temporal UI에서 확인할 수 있는 정보:**
-- 전체 워크플로우 실행 상태 (Running / Completed / Failed)
-- 각 Phase별 진행 상황 및 소요 시간
-- 병렬 실행 중인 에이전트 (5개 vulnerability/exploitation agents)
-- 에이전트별 상세 로그 및 에러 메시지
-- 재시도 히스토리 및 heartbeat 상태
-
-#### 방법 3: audit-logs 디렉토리 확인
+#### 방법 2: audit-logs 디렉토리 확인
 
 ```bash
 # EC2 내부에서
@@ -296,16 +278,16 @@ cd ~/shannon/audit-logs
 
 # 세션 폴더 확인
 ls -la
-# 출력: vultest1.vitzzang.com_shannon-1234567890/
+# 출력: example.com_shannon-1234567890/
 
 # 프롬프트 확인 (재현 가능성)
-cat vultest1.vitzzang.com_shannon-1234567890/prompts/pre-recon.txt
+cat example.com_shannon-1234567890/prompts/pre-recon.txt
 
 # 에이전트 실행 로그 확인
-cat vultest1.vitzzang.com_shannon-1234567890/agents/pre-recon.log
+cat example.com_shannon-1234567890/agents/pre-recon.log
 
 # 메트릭 확인 (비용 및 타이밍)
-cat vultest1.vitzzang.com_shannon-1234567890/session.json | jq
+cat example.com_shannon-1234567890/session.json | jq
 ```
 
 #### 진행 상황 추정
@@ -388,7 +370,7 @@ audit-logs/
 **session.json 예시:**
 ```json
 {
-  "hostname": "vultest1.vitzzang.com",
+  "hostname": "example.com",
   "sessionId": "shannon-1707736800",
   "startTime": "2026-02-12T08:25:00Z",
   "endTime": "2026-02-12T10:12:34Z",

@@ -209,7 +209,7 @@ Total deployment and pentest completion takes approximately **1.5-2 hours**.
 > **Note:**
 > - Costs based on [OWASP Juice Shop](https://github.com/juice-shop/juice-shop) (Node.js/Express, ~10,000 LOC) size estimate
 > - Actual costs may vary **much more significantly** depending on application complexity, vulnerability count, and source code volume
-> - Simple applications: $10-20, Complex applications: $30-50+ possible
+> - Simple applications: ~$20, Complex applications: can be much higher
 > - EC2 continues to accrue hourly charges - use `--teardown` immediately after completion
 
 ---
@@ -245,25 +245,7 @@ docker compose logs -f worker
 [injection-vuln] Testing SQL injection vulnerabilities...
 ```
 
-#### Method 2: Temporal Web UI
-
-Temporal Web UI provides visual workflow progress monitoring.
-
-```bash
-# Port forward from local machine (new terminal)
-aws ssm start-session --target <INSTANCE_ID> --region us-east-1 \
-  --document-name AWS-StartPortForwardingSession \
-  --parameters '{"portNumber":["8233"],"localPortNumber":["8233"]}'
-```
-
-**Temporal UI shows:**
-- Overall workflow status (Running / Completed / Failed)
-- Phase-by-phase progress and duration
-- Parallel agent execution (5 vulnerability/exploitation agents)
-- Detailed logs and error messages per agent
-- Retry history and heartbeat status
-
-#### Method 3: Check audit-logs Directory
+#### Method 2: Check audit-logs Directory
 
 ```bash
 # Inside EC2
@@ -271,16 +253,16 @@ cd ~/shannon/audit-logs
 
 # Check session folder
 ls -la
-# Output: vultest1.vitzzang.com_shannon-1234567890/
+# Output: example.com_shannon-1234567890/
 
 # View prompts (for reproducibility)
-cat vultest1.vitzzang.com_shannon-1234567890/prompts/pre-recon.txt
+cat example.com_shannon-1234567890/prompts/pre-recon.txt
 
 # View agent execution logs
-cat vultest1.vitzzang.com_shannon-1234567890/agents/pre-recon.log
+cat example.com_shannon-1234567890/agents/pre-recon.log
 
 # View metrics (cost and timing)
-cat vultest1.vitzzang.com_shannon-1234567890/session.json | jq
+cat example.com_shannon-1234567890/session.json | jq
 ```
 
 #### Progress Estimation
@@ -363,7 +345,7 @@ audit-logs/
 **session.json example:**
 ```json
 {
-  "hostname": "vultest1.vitzzang.com",
+  "hostname": "example.com",
   "sessionId": "shannon-1707736800",
   "startTime": "2026-02-12T08:25:00Z",
   "endTime": "2026-02-12T10:12:34Z",
