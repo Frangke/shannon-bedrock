@@ -188,7 +188,7 @@ The agent implements a crash-safe audit system with the following features:
 
 ### Learning from Reference Implementations
 
-A working POC exists at `/Users/arjunmalleswaran/Code/shannon-pocs` that demonstrates the ideal Temporal + Claude Agent SDK integration. When implementing Temporal features, agents can ask questions in the chat, and the user will relay them to another Claude Code session working in that POC directory.
+A working POC exists at `~/Code/shannon-pocs` that demonstrates the ideal Temporal + Claude Agent SDK integration. When implementing Temporal features, agents can ask questions in the chat, and the user will relay them to another Claude Code session working in that POC directory.
 
 **How to use this approach:**
 1. When stuck or unsure about Temporal patterns, write a specific question in the chat
@@ -203,7 +203,7 @@ A working POC exists at `/Users/arjunmalleswaran/Code/shannon-pocs` that demonst
 - "How does the POC integrate Claude Agent SDK calls within Temporal activities?"
 
 **Reference implementation:**
-- **Temporal + Claude Agent SDK**: `/Users/arjunmalleswaran/Code/shannon-pocs` - working implementation demonstrating workflows, activities, worker setup, and SDK integration
+- **Temporal + Claude Agent SDK**: `~/Code/shannon-pocs` - working implementation demonstrating workflows, activities, worker setup, and SDK integration
 
 ### Adding a New Agent
 1. Define the agent in `src/session-manager.ts` (add to `AGENT_QUEUE` and appropriate parallel group)

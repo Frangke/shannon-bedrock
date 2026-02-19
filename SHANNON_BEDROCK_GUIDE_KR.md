@@ -309,10 +309,10 @@ Shannon은 결과물을 `repos/<name>/deliverables/`에 저장합니다.
 # EC2 내부에서 (SSM 세션)
 sudo su - ubuntu && cd ~/shannon
 tar czf /tmp/shannon-results.tar.gz audit-logs/ repos/*/deliverables/
-aws s3 cp /tmp/shannon-results.tar.gz s3://claudecode-test/shannon-results.tar.gz
+aws s3 cp /tmp/shannon-results.tar.gz s3://your-bucket/shannon-results.tar.gz
 
 # 로컬 머신에서
-aws s3 cp s3://claudecode-test/shannon-results.tar.gz ./shannon-results.tar.gz
+aws s3 cp s3://your-bucket/shannon-results.tar.gz ./shannon-results.tar.gz
 tar xzf shannon-results.tar.gz
 ```
 
@@ -467,12 +467,17 @@ aws iam put-role-policy \
         ],
         "Resource": [
           "arn:aws:bedrock:*::foundation-model/*",
-          "arn:aws:bedrock:*:391056362256:inference-profile/*",
-          "arn:aws:bedrock:*:391056362256:provisioned-model/*"
+          "arn:aws:bedrock:*:ACCOUNT_ID:inference-profile/*",
+          "arn:aws:bedrock:*:ACCOUNT_ID:provisioned-model/*"
         ]
       }
     ]
   }'
+
+> **참고:** `ACCOUNT_ID`를 실제 AWS 계정 ID로 교체하거나, 다음 명령어로 자동 감지:
+> ```bash
+> ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+> ```
 
 # S3 읽기 권한 추가 (소스코드 다운로드용)
 aws iam put-role-policy \
